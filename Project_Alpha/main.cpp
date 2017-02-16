@@ -26,8 +26,25 @@ public:
 };
 
 void arm::init(){
-	mu = rand() % 5 + 1;
-	sigma = rand() % 2 + 1;
+	double m = rand() % 2;
+	double s = rand() % 2;
+	double msign;
+	double ssign;
+	if (m >= 1) {
+		msign = 0;
+	}
+	else {
+		msign = -10;
+	}
+
+	if (s >= 1) {
+		ssign = 0;
+	}
+	else {
+		ssign = -3;
+	}
+	mu = msign + rand() % 10 + 1;
+	sigma = ssign + MJRAND+rand() % 4;
 	reward_of_arm = 0;
 }
 
@@ -55,7 +72,8 @@ double stdev(vector<double>* pv, double avg) {
 
 int explore_or_greedy(double epsilon) {
 	int choice;
-	double number = rand() % 1+0;
+	double number = MJRAND;
+	//cout << "num = " << number << endl;
 	if (epsilon >=number) {
 		choice = 0;//explore
 	}
@@ -65,9 +83,10 @@ int explore_or_greedy(double epsilon) {
 	return choice;
 }
 
+//exponential decay formula
 double epsilon_decay(double init_epsilon, vector<double>* pv) {
 	double new_epsilon;
-	double lambda = .01;
+	double lambda = .001;
 	double e = 2.71828;
 	new_epsilon = init_epsilon * pow(e, -lambda*pv->size());
 
@@ -77,8 +96,6 @@ double epsilon_decay(double init_epsilon, vector<double>* pv) {
 //value out through equation
 double expected_value_out(vector<double>* pvec, double alpha, double arm_reward, int n) {
 	double value = 0.0;
-	//cout << "v size = " << pvec->size() << endl;
-	//cout << "n = " << n << endl;
 	if (pvec->at(1) == 0) {
 		value = alpha*arm_reward;
 	}
@@ -113,7 +130,29 @@ double arm_pull(double mu, double sigma)
 
 	z0 = sqrt(-2.0 * log(u1)) * cos(two_pi * u2);
 	z1 = sqrt(-2.0 * log(u1)) * sin(two_pi * u2);
+
 	return z0 * sigma + mu;
+}
+
+//implement at end of testing or won't converge
+void tetstA(arm arm, double avg, double average) {
+	double mu = arm.mu;//actual average value
+	double test_avg = average*1.1;//calculated from pulls, averages won't be exact adds tolerance
+	assert(test_avg == mu);
+}
+
+//implement at end of testing
+void testB(arm arml, arm armm, arm armr) {
+	double mul = arml.mu;
+	double mum = armm.mu;
+	double mur = armr.mu;
+
+	double varl = arml.sigma;
+	double varm = armm.sigma;
+	double varr = armr.sigma;
+
+	//assert (which arm was pulled the most = if that arm had the highest mean and lowest variance)
+
 }
 
 int main() {
@@ -124,13 +163,18 @@ int main() {
 	arm right_arm;
 
 	left_arm.init();
-	cout << "init mu = " << left_arm.mu << endl;
-	cout << "init sigma = " << left_arm.sigma << endl;
+	//cout << "init mu = " << left_arm.mu << endl;
+	//cout << "init sigma = " << left_arm.sigma << endl;
 	middle_arm.init();
 	right_arm.init();
 
 	int arm_input; // left=1, middle=2, right=3
 	int arm_pulled;
+	int lcount = 0;
+	int mcount = 0;
+	int rcount = 0;
+	int explore_count = 0;
+	int greedy_count = 0;
 
 	double total_left_reward = 0;
 	double total_middle_reward = 0;
@@ -142,77 +186,184 @@ int main() {
 	vector<double> middle(length,0);
 	vector<double> right(length,0);
 
-	vector<double> left_exp_value;
-	vector<double>right_exp_value;
-	vector<double>middle_exp_value;
+	vector<double> left_exp_value(length, 0); //stores V(T)
+	vector<double> right_exp_value(length, 0);
+	vector<double> middle_exp_value(length, 0);
 	
-	vector<double> learn_curve;//stores each pull, used for excel
-	vector<int> action_curve;//which arm is pulled, for excel
+	vector<double> learn_curve;//stores current reward value for each pull, used for excel
+	vector<double> action_curve;//stores which arm is pulled every iteration, for excel
 
-	double avgl;
-	double avgm;
-	double avgr;
-	double devationl;
-	double devationm;
-	double devationr;
-	double current_reward;
+	double avgl=1;
+	double avgm=1;
+	double avgr=1;
+	double devationl=1;
+	double devationm=1;
+	double devationr=1;
+	double current_reward=1;
 
 	//explore vs greedy 
 	//double epsilon = rand() % 1;
-	double init_epsilon = .5; //at start no knowledge 
+	double init_epsilon = .3; //at start no knowledge 
 	double epsilon = init_epsilon;
-	explore_or_greedy(epsilon);
-	if (int choice = 0) {
-		arm_input = rand() % 3 + 1;
-		if (arm_input == 1) {
-			current_reward = arm_pull(left_arm.mu, left_arm.sigma);
-			left_arm.reward_of_arm = expected_value_out(&left_exp_value, left_arm.alpha, current_reward,n);//fix,move into for loop
-			left.at(n) = left_arm.reward_of_arm;//replaces value in vector to reward
-			total_left_reward = total_left_reward + left_arm.reward_of_arm;
-			cout << "left total reward = " << total_left_reward << endl;
-			avgl = average(&left);
-			cout << "left avg = " << avgl << endl;
-			devationl = stdev(&left, avgl);
-			cout << "left dev = " << devationl << endl;
-			arm_pulled = 1;
-			learn_curve.push_back(current_reward);
-			action_curve.push_back(arm_pulled);
-		}
-		cout << "explore" << endl;
-	}
-	else {
-		cout << "greedy" << endl;
-
-	}
-
-	//pull arm
+	//agent pulling arm
 	for (int n = 1; n < length; n++) {
-			cout << "choose arm" << endl;
-			cin >> arm_input;
+		/*cout << "choose arm" << endl;
+		cin >> arm_input;*/
+		int choice;
+		choice = explore_or_greedy(epsilon);
+
+		if (choice == 0) {//explore
+			cout << "explore" << endl;
+			explore_count++;
+			arm_input = rand() % 3 + 1;
 			if (arm_input == 1) {
-				left_arm.reward_of_arm = arm_pull(left_arm.mu, left_arm.sigma);
-				total_left_reward = total_left_reward + left_arm.reward_of_arm;
-				left.push_back(left_arm.reward_of_arm);
-				cout << "left total reward = " << total_left_reward << endl;
-				avgl = average(&left);
-				cout << "left avg = " << avgl << endl;
-				devationl = stdev(&left, avgl);
-				cout << "left dev = " << devationl << endl;
+				current_reward = arm_pull(left_arm.mu, left_arm.sigma);// R in the equation
+				learn_curve.push_back(current_reward);
+				left_arm.reward_of_arm = expected_value_out(&left_exp_value, left_arm.alpha, current_reward,n);// V(T)
+				left.at(n) = left_arm.reward_of_arm;//replaces value in vector to reward
+				total_left_reward = total_left_reward + left_arm.reward_of_arm;//total reward of the arm
+				//cout << "left total reward = " << total_left_reward << endl;
+				avgl = average(&learn_curve);//check for which vector
+				//cout << "left avg = " << avgl << endl;
+				devationl = stdev(&learn_curve, avgl);
+				//cout << "left dev = " << devationl << endl;
+				arm_pulled = 1;
+				//cout << "left arm pulled" << endl;
+				action_curve.push_back(arm_pulled);
+				epsilon = epsilon_decay(init_epsilon, &action_curve);//generates lower epsilon
+				lcount++;
 			}
 			else if (arm_input == 2) {
-				total_middle_reward = total_middle_reward + middle_arm.reward_of_arm;
-				middle.push_back(total_middle_reward);
-				cout << "reward = " << total_middle_reward << endl;
+				current_reward = arm_pull(middle_arm.mu, middle_arm.sigma);// R in the equation
+				learn_curve.push_back(current_reward);
+				middle_arm.reward_of_arm = expected_value_out(&middle_exp_value, middle_arm.alpha, current_reward,n);// V(T)
+				middle.at(n) = middle_arm.reward_of_arm;//replaces value in vector to reward
+				total_middle_reward = total_middle_reward + middle_arm.reward_of_arm;//total reward of the arm
+				//cout << "left total reward = " << total_left_reward << endl;
+				avgl = average(&learn_curve);//check for which vector
+				//cout << "left avg = " << avgl << endl;
+				devationl = stdev(&learn_curve, avgl);
+				//cout << "left dev = " << devationl << endl;
+				arm_pulled = 2;
+				//cout << "mid arm pulled" << endl;
+				action_curve.push_back(arm_pulled);
+				epsilon = epsilon_decay(init_epsilon, &action_curve);//generates lower epsilon
+				mcount++;
 			}
 			else if (arm_input == 3) {
-				total_right_reward = total_right_reward + right_arm.reward_of_arm;
-				right.push_back(total_right_reward);
-				cout << "reward = " << total_right_reward << endl;
+				current_reward = arm_pull(right_arm.mu, right_arm.sigma);// R in the equation
+				learn_curve.push_back(current_reward);
+				right_arm.reward_of_arm = expected_value_out(&right_exp_value, right_arm.alpha, current_reward,n);// V(T)
+				right.at(n) = right_arm.reward_of_arm;//replaces value in vector to reward
+				total_right_reward = total_right_reward + right_arm.reward_of_arm;//total reward of the arm
+				//cout << "left total reward = " << total_left_reward << endl;
+				avgl = average(&learn_curve);//check for which vector
+				//cout << "left avg = " << avgl << endl;
+				devationl = stdev(&learn_curve, avgl);
+				//cout << "left dev = " << devationl << endl;
+				arm_pulled = 3;
+				//cout << "left arm pulled" << endl;
+				action_curve.push_back(arm_pulled);
+				epsilon = epsilon_decay(init_epsilon, &action_curve);//generates lower epsilon
+				rcount++;
 			}
 			else {
 				cout << "invalid arm" << endl;
 			}
+			
+			}
+
+		else {
+			greedy_count++;
+			cout << "greedy" << endl;
+			if (avgl > avgm && avgl > avgr) {
+				arm_input = 1;
+			}
+			else if (avgm > avgl && avgm > avgr) {
+				arm_input = 2;
+			}
+			else if (avgr > avgl && avgr > avgm) {
+				arm_input = 3;
+			}
+			else {
+				arm_input = rand() % 3 + 1;
+			}
+
+
+			if (arm_input == 1) {
+				current_reward = arm_pull(left_arm.mu, left_arm.sigma);// R in the equation
+				learn_curve.push_back(current_reward);
+				left_arm.reward_of_arm = expected_value_out(&left_exp_value, left_arm.alpha, current_reward,n);// V(T)
+				left.at(n) = left_arm.reward_of_arm;//replaces value in vector to reward
+				total_left_reward = total_left_reward + left_arm.reward_of_arm;//total reward of the arm
+				//cout << "left total reward = " << total_left_reward << endl;
+				avgl = average(&learn_curve);//check for which vector
+				//cout << "left avg = " << avgl << endl;
+				devationl = stdev(&learn_curve, avgl);
+				//cout << "left dev = " << devationl << endl;
+				arm_pulled = 1;
+				//cout << "left arm pulled" << endl;
+				action_curve.push_back(arm_pulled);
+				epsilon = epsilon_decay(init_epsilon, &action_curve);//generates lower epsilon
+				lcount++;
+			}
+			else if (arm_input == 2) {
+				current_reward = arm_pull(middle_arm.mu, middle_arm.sigma);// R in the equation
+				learn_curve.push_back(current_reward);
+				middle_arm.reward_of_arm = expected_value_out(&middle_exp_value, middle_arm.alpha, current_reward,n);// V(T)
+				middle.at(n) = middle_arm.reward_of_arm;//replaces value in vector to reward
+				total_middle_reward = total_middle_reward + middle_arm.reward_of_arm;//total reward of the arm
+				//cout << "left total reward = " << total_left_reward << endl;
+				avgl = average(&learn_curve);//check for which vector
+				//cout << "left avg = " << avgl << endl;
+				devationl = stdev(&learn_curve, avgl);
+				//cout << "left dev = " << devationl << endl;
+				arm_pulled = 2;
+				//cout << "mid arm pulled" << endl;
+				action_curve.push_back(arm_pulled);
+				epsilon = epsilon_decay(init_epsilon, &action_curve);//generates lower epsilon
+				mcount++;
+			}
+			else if (arm_input == 3) {
+				current_reward = arm_pull(right_arm.mu, right_arm.sigma);// R in the equation
+				learn_curve.push_back(current_reward);
+				right_arm.reward_of_arm = expected_value_out(&right_exp_value, right_arm.alpha, current_reward,n);// V(T)
+				right.at(n) = right_arm.reward_of_arm;//replaces value in vector to reward
+				total_right_reward = total_right_reward + right_arm.reward_of_arm;//total reward of the arm
+				//cout << "left total reward = " << total_left_reward << endl;
+				avgl = average(&learn_curve);//check for which vector
+				//cout << "left avg = " << avgl << endl;
+				devationl = stdev(&learn_curve, avgl);
+				//cout << "left dev = " << devationl << endl;
+				arm_pulled = 3;
+				//cout << "left arm pulled" << endl;
+				action_curve.push_back(arm_pulled);
+				epsilon = epsilon_decay(init_epsilon, &action_curve);//generates lower epsilon
+				rcount++;
+			}
+			else {
+				cout << "invalid arm" << endl;
+			}
+		}
 		
 	}
+	cout << "l arm avg = " << left_arm.mu << " var = " << left_arm.sigma << endl;
+	cout << "m arm avg = " << middle_arm.mu << " var = " << middle_arm.sigma << endl;
+	cout << "r arm avg = " << right_arm.mu << " var = " << right_arm.sigma << endl;
+	cout << "left pulls = " << lcount << endl;
+	cout << "mid pulls = " << mcount << endl;
+	cout << "right pulls = " << rcount << endl;
+	cout << "explore count = " << explore_count << endl;
+	cout << "greedy count = " << greedy_count << endl;
+	//testA************
+	//testB****************
+	
+	ofstream project_alpha;
+	project_alpha.open("project_alpha.txt");
+	for (int m = 0; m < learn_curve.size(); m++) {
+		project_alpha << "reward = " << learn_curve.at(m) << endl;
+	}
+	project_alpha.close();
+
 	return 0;
 }
