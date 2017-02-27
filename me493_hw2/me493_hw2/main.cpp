@@ -51,7 +51,7 @@ void agent::init() {
 }
 
 void agent::move() {
-	cout << "skip move = " << skip_move << endl;
+	//cout << "skip move = " << skip_move << endl;
 	if (skip_move == 0) {
 		if (direction == 1) {
 			//up
@@ -180,10 +180,18 @@ void gridworld::bumper_check(agent* plearn) {
 }
 
 //places agent at 0,0 if starts out of bounds
-void testA(agent* plearn, gridworld* pmap) {
-	if (plearn->agentX > pmap->row && plearn->agentY > pmap->column) {
-		plearn->agentX = 0;
-		plearn->agentY = 0;
+void testA(gridworld* pmap) {
+	cout << "Enter agent coordinates that are larger than the size of the grid" << endl;
+	int x;
+	int y;
+	cout << "x = ";
+	cin >> x;
+	cout << "y = ";
+	cin >> y;
+
+	if (x > pmap->row && y > pmap->column) {
+		x = 0;
+		y = 0;
 	}
 }
 
@@ -223,28 +231,38 @@ int main() {
 	gridworld grid;
 	agent smith;
 	agent* psmith = &smith;
-	gridworld* pgrid = &grid;
 	grid.init();
 	smith.init();
-	testA(psmith, pgrid);
+	//creates new goal if goal and agent start at the same spot
+	while (smith.agentX == grid.goalX && smith.agentY == grid.goalY) {
+		cout << "goal and agent at same spot" << endl;
+		cout << "enter matrix size again" << endl;
+		grid.init();
+	}
+	gridworld* pgrid = &grid;
 	grid.clear_grid(psmith);
 	int stop = 0; //break out of loop when goal reached
-				  //int m;
 	int pick_test;
 
 	grid.show_grid();
 	cout << "value of 1 = agent's location	value of 5 = goal's location" << endl;
 	cout << "agent X pos = " << smith.agentX << "  agent Y pos = " << smith.agentY << endl;
 	cout << "goal X pos = " << grid.goalX << "  goal Y pos = " << grid.goalY << endl;
-	cout << "Pick a test to run: Test B=1, Test C=2" << endl;
+	cout << "Pick a test to run: Test A=0, B=1, Test C=2" << endl;
 	cin >> pick_test;
-	if (pick_test == 1) {
+
+	if (pick_test == 0) {
+		testA(pgrid);
+		grid.show_grid();
+	}
+	else if (pick_test == 1) {
 		while (stop < 1) {
 			testB(psmith);
 			grid.bumper_check(psmith);
 			smith.move();
 			grid.clear_grid(psmith);
 			grid.show_grid();
+			cout << endl;
 			cout << "agent X pos = " << smith.agentX << "  agent Y pos = " << smith.agentY << endl;
 			cout << "goal X pos = " << grid.goalX << "  goal Y pos = " << grid.goalY << endl;
 			if (smith.agentX == grid.goalX && smith.agentY == grid.goalY) {
@@ -260,6 +278,7 @@ int main() {
 			smith.move();
 			grid.clear_grid(psmith);
 			grid.show_grid();
+			cout << endl;
 			cout << "agent X pos = " << smith.agentX << "  agent Y pos = " << smith.agentY << endl;
 			cout << "goal X pos = " << grid.goalX << "  goal Y pos = " << grid.goalY << endl;
 			if (smith.agentX == grid.goalX && smith.agentY == grid.goalY) {
