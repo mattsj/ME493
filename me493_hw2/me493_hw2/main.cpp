@@ -43,15 +43,15 @@ public:
 };
 
 void agent::init() {
-	agentX = 0; //x location
-	agentY = 0;//y location
+	agentX = 1; //x location
+	agentY = 1;//y location
 	place_agent[1] = agentX;
 	place_agent[0] = agentY;
 	agent_value = 1;//represents where agent is when matrix is shown
 }
 
 void agent::move() {
-	//cout << "skip move = " << skip_move << endl;
+	//agent will only move if skip_move = 0
 	if (skip_move == 0) {
 		if (direction == 1) {
 			//up
@@ -99,11 +99,13 @@ void gridworld::init() {
 		}
 	}
 
+	//creates location of the goal
 	goalX = rand() % row;
 	goalY = rand() % column;
 	//goalX = 1;
 	//goalY = 1;
-
+	
+	//places goal in grid
 	matrix[goalX][goalY] = goal_value;
 }
 
@@ -180,19 +182,18 @@ void gridworld::bumper_check(agent* plearn) {
 }
 
 //places agent at 0,0 if starts out of bounds
-void testA(gridworld* pmap) {
+void testA(agent* pagent, gridworld* pmap) {
 	cout << "Enter agent coordinates that are larger than the size of the grid" << endl;
-	int x;
-	int y;
 	cout << "x = ";
-	cin >> x;
+	cin >> pagent->agentX;
 	cout << "y = ";
-	cin >> y;
+	cin >> pagent->agentY;
 
-	if (x > pmap->row && y > pmap->column) {
-		x = 0;
-		y = 0;
+	if (pagent->agentX > pmap->row && pagent->agentY > pmap->column) {
+		pagent->agentX = 0;
+		pagent->agentY = 0;
 	}
+	pmap->matrix[pagent->agentX][pagent->agentY] = pagent->agent_value;
 }
 
 //allows for human input
@@ -252,7 +253,13 @@ int main() {
 	cin >> pick_test;
 
 	if (pick_test == 0) {
-		testA(pgrid);
+		testA(psmith,pgrid);
+		while (smith.agentX == grid.goalX && smith.agentY == grid.goalY) {
+			cout << "goal and agent at same spot" << endl;
+			cout << "enter matrix size again" << endl;
+			grid.init();
+		}
+		grid.clear_grid(psmith);
 		grid.show_grid();
 	}
 	else if (pick_test == 1) {
