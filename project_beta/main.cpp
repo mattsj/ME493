@@ -23,7 +23,7 @@ public:
 	int agent_value = 1;//for displaying agent on grid
 	int place_agent[2] = { agentY,agentX };//matrix containing location of agent
 	int skip_move;// for when agent hits bumper, only moves if = 0
-	int choice;//tells agent to explore or greedy
+	int choice;//tells agent to explore or greedy 0=random, 1=greedy
 	int num_moves = 0;
 
 
@@ -35,20 +35,19 @@ public:
 	void move();
 	void explore_or_greedy();
 	void epsilon_decay();
-	void greedy_action();
 
 };
 
 void agent::init() {
-	agentX = 1; //x location
-	agentY = 1;//y location
+	agentX = 0; //x location
+	agentY = 0;//y location
 	place_agent[1] = agentX;
 	place_agent[0] = agentY;
 	agent_value = 1;//represents where agent is when matrix is shown
 
-	epsilon = 1;
-	alpha = 1;
-	gamma = 1;
+	epsilon = .1;
+	alpha = .1;
+	gamma = .9;
 }
 
 void agent::move() {
@@ -77,9 +76,8 @@ void agent::move() {
 }
 
 void agent::explore_or_greedy() {
-	double number = MJRAND;
 	//cout << "num = " << number << endl;
-	if (epsilon >= number) {
+	if (epsilon >= 1 - MJRAND) {
 		choice = 0;//explore
 	}
 	else {
@@ -94,9 +92,6 @@ void agent::epsilon_decay() {
 	epsilon = epsilon * pow(e, -lambda*num_moves);
 }
 
-void agent::greedy_action() {
-
-}
 
 
 
@@ -114,7 +109,7 @@ public:
 	int rewardY;
 	void max_q(agent* plearn);
 	int current_state;
-	void previous_state(agent* plearn);
+	void current_state_fxn(agent* plearn);
 	int prev_state;
 	double q_value;
 	double max_qvalue = 0;
@@ -133,6 +128,7 @@ public:
 
 	void create_q_table(agent* plearn);
 	void update_q_table(agent* plearn);
+	void show_q_table(agent* plearn);
 };
 
 void gridworld::init() {
@@ -176,10 +172,10 @@ void gridworld::init() {
 
 
 	//creates location of the goal
-	goalX = rand() % row;
-	goalY = rand() % column;
-	//goalX = 1;
-	//goalY = 1;
+	//goalX = rand() % row;
+	//goalY = rand() % column;
+	goalX = 1;
+	goalY = 1;
 	//places goal in grid
 	matrix[goalX][goalY] = goal_value;
 
@@ -247,34 +243,39 @@ void gridworld::bumper_check(agent* plearn) {
 	if (plearn->agentX == 0 && plearn->agentY == 0) {
 		if (plearn->direction == 0 || plearn->direction == 2) {
 			plearn->skip_move = 1;
+			cout << "corner hit" << endl;
 		}
 	}
 	if (plearn->agentX == row - 1 && plearn->agentY == 0) { //must subtract 1 since matrix starts at 0
 		if (plearn->direction == 1 || plearn->direction == 2) {
 			plearn->skip_move = 1;
+			cout << "corner hit" << endl;
 		}
 	}
 	if (plearn->agentX == 0 && plearn->agentY == column - 1) {
 		if (plearn->direction == 0 || plearn->direction == 3) {
 			plearn->skip_move = 1;
+			cout << "corner hit" << endl;
 		}
 	}
 	if (plearn->agentX == row - 1 && plearn->agentY == column - 1) {
 		if (plearn->direction == 1 || plearn->direction == 3) {
 			plearn->skip_move = 1;
+			cout << "corner hit" << endl;
 		}
 	}
 }
 
-void gridworld::previous_state(agent* plearn) {
-	prev_state = state.at(matrix[plearn->agentX][plearn->agentY]);
-	cout << "prev state = " << prev_state << endl;
+void gridworld::current_state_fxn(agent* plearn) {
+	cout << "x=" << plearn->agentX << " y=" << plearn->agentY << endl;
+	current_state = state.at(tempmatrix[plearn->agentY][plearn->agentX]);
+	cout << "current state = " << current_state << endl;
 }
 
 //creates initial q table
 void gridworld::create_q_table(agent* plearn) {
 	int action = 4;//0=up, 1=down, 2=left, 3=right
-				   //int num_states = row*column;
+				   //num of states = row * column
 	q_table.resize(action);
 	for (int i = 0; i < action; i++) {
 		q_table[i].resize(state.size());
@@ -285,28 +286,65 @@ void gridworld::create_q_table(agent* plearn) {
 		for (int b = 0; b < state.size(); b++) {
 			//q_table[a][b] = b;
 			q_table[a][b] = MJRAND*.001;
+		}
+	}
+
+}
+
+void gridworld::show_q_table(agent* plearn) {
+	//cout << "state size = " << state.size() << endl;
+	for (int a = 0; a < 4; a++) {
+		for (int b = 0; b < state.size(); b++) {
 			cout << q_table[a][b] << "\t";
 		}
 		cout << endl;
 	}
-
 }
 
 //updates Q table every move, agent moves first by looking at the q table and then updates q table
 //called after the agent moves
 void gridworld::update_q_table(agent* plearn) {
-	current_state = state.at(tempmatrix[plearn->agentY][plearn->agentX]);//coordinates flipped due to the state equation
-	cout << "current state = " << current_state << endl;
-	q_value = q_table[plearn->direction][current_state];
-	cout << "q_value = " << q_value << endl;
-	cout << "direction = " << plearn->direction << endl;
+	//current_state = state.at(tempmatrix[plearn->agentY][plearn->agentX]);//coordinates flipped due to the state equation
+	cout << "update ax = " << plearn->agentX << "  update ay = " << plearn->agentY << endl;
+	prev_state = state.at(tempmatrix[plearn->agentY][plearn->agentX]);//coordinates flipped due to the state equation
 	cout << "prev state = " << prev_state << endl;
+	//q_value = q_table[plearn->direction][current_state];
+	//cout << "q_value = " << q_value << endl;
+	cout << "update q direction = " << plearn->direction << endl;
 
 	if (plearn->skip_move == 0) {
 		q_table[plearn->direction][prev_state] = q_table[plearn->direction][prev_state] + (plearn->alpha*reward.at(current_state) + plearn->gamma*max_qvalue - q_table[plearn->direction][prev_state]);
 	}
 	else {
 		//if hits bumper, q value for that action becomes -1
+		//top left corner
+		if (plearn->agentX == 0 && plearn->agentY == 0) {
+			if (plearn->direction == 0 || plearn->direction == 2) {
+				q_table[0][prev_state] = -1;
+				q_table[2][prev_state] = -1;
+			}
+		}
+		//bottom left corner
+		if (plearn->agentX == row - 1 && plearn->agentY == 0) { //must subtract 1 since matrix starts at 0
+			if (plearn->direction == 1 || plearn->direction == 2) {
+				q_table[1][prev_state] = -1;
+				q_table[2][prev_state] = -1;
+			}
+		}
+		//top left corner
+		if (plearn->agentX == 0 && plearn->agentY == column - 1) {
+			if (plearn->direction == 0 || plearn->direction == 3) {
+				q_table[0][prev_state] = -1;
+				q_table[3][prev_state] = -1;
+			}
+		}
+		//bottom right corner
+		if (plearn->agentX == row - 1 && plearn->agentY == column - 1) {
+			if (plearn->direction == 1 || plearn->direction == 3) {
+				q_table[1][prev_state] = -1;
+				q_table[3][prev_state] = -1;
+			}
+		}
 		q_table[plearn->direction][prev_state] = -1;
 	}
 }
@@ -315,63 +353,62 @@ void gridworld::update_q_table(agent* plearn) {
 //determines what action/direction associated with the max q
 void gridworld::max_q(agent* plearn) {
 	int num_actions = 4;
-	double array[4] = { q_table[0][current_state],q_table[1][current_state],q_table[2][current_state],q_table[3][current_state] };
+	//int temp = 1;
+	//current_state = state.at(tempmatrix[plearn->agentY][plearn->agentX]);//coordinates flipped due to the state equation
+	//double array[4] = { };
+	//array[4] = { q_table[0][current_state],q_table[1][current_state],q_table[2][current_state],q_table[3][current_state] };
+	vector<double> temp;
+	temp.push_back(q_table[0][current_state]);
+	temp.push_back(q_table[1][current_state]);
+	temp.push_back(q_table[2][current_state]);
+	temp.push_back(q_table[3][current_state]);
+
 	for (int i = 0; i < num_actions; i++) {
-		if (array[i] > max_qvalue) {
-			max_qvalue = array[i];
+		if (temp.at(i) > max_qvalue) {
+			max_qvalue = temp.at(i);
+			//temp = i;
 		}
 	}
+	//plearn->direction = temp;
+	cout << "max q = " << max_qvalue << endl;
+
 
 	if (max_qvalue == q_table[0][current_state]) {
 		plearn->direction = 0;
+		cout << "max q dir = 0" << endl;
 	}
 	else if (max_qvalue == q_table[1][current_state]) {
 		plearn->direction = 1;
+		cout << "max q dir = 1" << endl;
 	}
 	else if (max_qvalue == q_table[2][current_state]) {
 		plearn->direction = 2;
+		cout << "max q dir = 2" << endl;
 	}
 	else if (max_qvalue == q_table[3][current_state]) {
 		plearn->direction = 3;
+		cout << "max q dir = 3" << endl;
 	}
 	else {
-		cout << "error" << endl;
+		cout << "error in max q" << endl;
 	}
 }
 
-
-
-
-//allows for human input
-void testB(agent* plearn) {
-	cout << endl;
-	cout << "up = 0, down = 1, left = 2, right = 3" << endl;
-	cout << "input direction" << endl;
-	cin >> plearn->direction;
-}
-
-//autonomous movement
-void testC(agent* plearn, gridworld* pmap) {
-	if (plearn->agentX < pmap->goalX) {
-		plearn->direction = 2;
-		cout << "down" << endl;
-	}
-	else if (plearn->agentX > pmap->goalX) {
-		plearn->direction = 1;
-		cout << "up" << endl;
-	}
-	else if (plearn->agentY < pmap->goalY) {
-		plearn->direction = 4;
-		cout << "right" << endl;
-	}
-	else if (plearn->agentY > pmap->goalY) {
-		plearn->direction = 3;
-		cout << "left" << endl;
+//decides what direction to pick 
+void decide(agent* plearn, gridworld* pmap) {
+	if (plearn->choice == 0) {
+		plearn->direction = rand() % 4;
+		cout << "explore" << endl;
+		cout << "explore direction = " << plearn->direction << endl;
 	}
 	else {
-		cout << "error" << endl;
+		pmap->max_q(plearn);
+		cout << "max q 1111111" << endl;
+		cout << "greedy" << endl;
 	}
 }
+
+
 
 int main() {
 	srand(time(NULL));
@@ -388,30 +425,47 @@ int main() {
 	}
 	gridworld* pgrid = &grid;
 	grid.clear_grid(psmith);
-	int stop = 0; //break out of loop when goal reached
-
+	int stop; //break out of loop when goal reached
+	int num_moves;
 	grid.create_q_table(psmith);
+	grid.show_q_table(psmith);
 
 	int pick_test;
 
 	grid.show_grid();
 
-	while (stop < 1) {
-		grid.previous_state(psmith);
-		testB(psmith);//asks for direction to move
-		grid.bumper_check(psmith);
-		smith.move();
-		grid.max_q(psmith);
-		grid.update_q_table(psmith);
-		grid.clear_grid(psmith);
-		grid.show_grid();
-		cout << endl;
-		cout << "agent X pos = " << smith.agentX << "  agent Y pos = " << smith.agentY << endl;
-		cout << "goal X pos = " << grid.goalX << "  goal Y pos = " << grid.goalY << endl;
-		if (smith.agentX == grid.goalX && smith.agentY == grid.goalY) {
-			stop = 1000;
-			cout << "Goal Reached" << endl;
+	vector<int> vstep;
+
+	for (int n = 0; n < 50; n++) {
+		stop = 0;
+		num_moves = 0;
+		while (stop < 1) {
+			cout << endl;
+			cout << endl;
+			grid.current_state_fxn(psmith);
+			smith.explore_or_greedy();//decides to do random or greedy
+			decide(psmith, pgrid);//picks direction to move
+			grid.bumper_check(psmith);//checks if the move will hit bumper
+			smith.move();//moves the agent
+			cout << "move has been made" << endl;
+			cin >> pick_test;
+			grid.max_q(psmith);
+			cout << "max q 2222222" << endl;
+			grid.update_q_table(psmith);//updates q table based on move
+			grid.show_q_table(psmith);
+			grid.clear_grid(psmith);
+			grid.show_grid();
+			cout << endl;
+			//cout << "agent X pos = " << smith.agentX << "  agent Y pos = " << smith.agentY << endl;
+			//cout << "goal X pos = " << grid.goalX << "  goal Y pos = " << grid.goalY << endl;
+			if (smith.agentX == grid.goalX && smith.agentY == grid.goalY) {
+				stop = 1000;
+				cout << "Goal Reached" << endl;
+			}
+			num_moves++;
 		}
+		vstep.push_back(num_moves);
+		cout << "moves = " << num_moves << endl;
 	}
 
 
@@ -421,51 +475,12 @@ int main() {
 	//cout << "Pick a test to run: Test A=0, B=1, Test C=2" << endl;
 	//cin >> pick_test;
 
-	/*if (pick_test == 0) {
-	testA(psmith, pgrid);
-	while (smith.agentX == grid.goalX && smith.agentY == grid.goalY) {
-	cout << "goal and agent at same spot" << endl;
-	cout << "enter matrix size again" << endl;
-	grid.init();
+	ofstream project_beta;
+	project_beta.open("project_beta.txt");
+	for (int m = 0; m < vstep.size(); m++) {
+		project_beta << vstep.at(m) << endl;
 	}
-	grid.clear_grid(psmith);
-	grid.show_grid();
-	}
-	else if (pick_test == 1) {
-	while (stop < 1) {
-	testB(psmith);
-	grid.bumper_check(psmith);
-	smith.move();
-	grid.clear_grid(psmith);
-	grid.show_grid();
-	cout << endl;
-	cout << "agent X pos = " << smith.agentX << "  agent Y pos = " << smith.agentY << endl;
-	cout << "goal X pos = " << grid.goalX << "  goal Y pos = " << grid.goalY << endl;
-	if (smith.agentX == grid.goalX && smith.agentY == grid.goalY) {
-	stop = 1000;
-	cout << "Goal Reached" << endl;
-	}
-	}
-	}
-	else if (pick_test == 2) {
-	while (stop < 1) {
-	testC(psmith, pgrid);
-	grid.bumper_check(psmith);
-	smith.move();
-	grid.clear_grid(psmith);
-	grid.show_grid();
-	cout << endl;
-	cout << "agent X pos = " << smith.agentX << "  agent Y pos = " << smith.agentY << endl;
-	cout << "goal X pos = " << grid.goalX << "  goal Y pos = " << grid.goalY << endl;
-	if (smith.agentX == grid.goalX && smith.agentY == grid.goalY) {
-	stop = 1000;
-	cout << "Goal Reached" << endl;
-	}
-	}
-	}
-	else {
-	cout << "invalid test" << endl;
-	}*/
+	project_beta.close();
 
 	return 0;
 }
