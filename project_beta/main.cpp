@@ -45,7 +45,7 @@ void agent::init() {
 	place_agent[0] = agentY;
 	agent_value = 1;//represents where agent is when matrix is shown
 
-	epsilon = .1;
+	epsilon = 0;
 	alpha = .1;
 	gamma = .9;
 }
@@ -115,6 +115,7 @@ public:
 	double q_value;
 	double max_qvalue_old = 0;
 	double max_qvalue_new = 0;
+	double thereward;
 
 	vector<vector<int>> matrix;//gridworld
 	vector<vector<int>> tempmatrix; //for looking up state coordinates
@@ -334,53 +335,77 @@ void gridworld::show_q_table(agent* plearn) {
 //runs previous state function to obtain what previous state was
 //called after the agent moves
 void gridworld::update_q_table(agent* plearn) {
-	//current_state = state.at(tempmatrix[plearn->agentY][plearn->agentX]);//coordinates flipped due to the state equation
-	//cout << "update ax = " << plearn->agentX << "  update ay = " << plearn->agentY << endl;
-	current_state = state.at(tempmatrix[plearn->agentX][plearn->agentY]);
-	//cout << "current state = " << current_state << endl;
+	/*current_state = state.at(tempmatrix[plearn->agentX][plearn->agentY]);
+	cout << "current state = " << current_state << endl;*/
 	//q_value = q_table[plearn->direction][current_state];
 	//cout << "q_value = " << q_value << endl;
 	//cout << "update q direction = " << plearn->direction << endl;
-	if (current_state == prev_state) {
-		//reward=-1
-	}
-	//if moves into another square set reward =.01
 
-	if (plearn->skip_move == 0) {
-		q_table_new[plearn->direction][prev_state] = q_table_new[plearn->direction][prev_state] + (plearn->alpha*reward.at(current_state) + plearn->gamma*max_qvalue_new - q_table_new[plearn->direction][prev_state]);
+	if (current_state == prev_state) {
+		//reward=-1 for hitting bumper
+		thereward = -1;
+	}
+	else if (plearn->agentX == goalX && plearn->agentY == goalY) {
+		thereward = goal_reward; //for reaching goal
 	}
 	else {
-		//if hits bumper, q value for that action becomes 0
-		//top left corner
-		if (plearn->agentX == 0 && plearn->agentY == 0) {
-			if (plearn->direction == 0 || plearn->direction == 2) {
-				q_table_new[0][prev_state] = 0;
-				q_table_new[2][prev_state] = 0;
-			}
-		}
-		//bottom left corner
-		if (plearn->agentX == row - 1 && plearn->agentY == 0) { //must subtract 1 since matrix starts at 0
-			if (plearn->direction == 1 || plearn->direction == 2) {
-				q_table_new[1][prev_state] = 0;
-				q_table_new[2][prev_state] = 0;
-			}
-		}
-		//top left corner
-		if (plearn->agentX == 0 && plearn->agentY == column - 1) {
-			if (plearn->direction == 0 || plearn->direction == 3) {
-				q_table_new[0][prev_state] = 0;
-				q_table_new[3][prev_state] = 0;
-			}
-		}
-		//bottom right corner
-		if (plearn->agentX == row - 1 && plearn->agentY == column - 1) {
-			if (plearn->direction == 1 || plearn->direction == 3) {
-				q_table_new[1][prev_state] = 0;
-				q_table_new[3][prev_state] = 0;
-			}
-		}
-		q_table_new[plearn->direction][prev_state] = 0;
+		thereward = .001;//for moving to a different state
 	}
+
+	//if (plearn->skip_move == 0) {
+		q_table_new[plearn->direction][prev_state] = q_table_new[plearn->direction][prev_state] + (plearn->alpha*thereward + plearn->gamma*max_qvalue_new - q_table_new[plearn->direction][prev_state]);
+	//}
+	//else {
+	//	//if hits bumper, q value for that action becomes 0
+	//	//top left corner
+	//	if (plearn->agentX == 0 && plearn->agentY == 0) {
+	//		if (plearn->direction == 0 || plearn->direction == 2) {
+	//			q_table_new[0][prev_state] = 0;
+	//			q_table_new[2][prev_state] = 0;
+	//		}
+	//	}
+	//	//bottom left corner
+	//	if (plearn->agentX == row - 1 && plearn->agentY == 0) { //must subtract 1 since matrix starts at 0
+	//		if (plearn->direction == 1 || plearn->direction == 2) {
+	//			q_table_new[1][prev_state] = 0;
+	//			q_table_new[2][prev_state] = 0;
+	//		}
+	//	}
+	//	//top left corner
+	//	if (plearn->agentX == 0 && plearn->agentY == column - 1) {
+	//		if (plearn->direction == 0 || plearn->direction == 3) {
+	//			q_table_new[0][prev_state] = 0;
+	//			q_table_new[3][prev_state] = 0;
+	//		}
+	//	}
+	//	//bottom right corner
+	//	if (plearn->agentX == row - 1 && plearn->agentY == column - 1) {
+	//		if (plearn->direction == 1 || plearn->direction == 3) {
+	//			q_table_new[1][prev_state] = 0;
+	//			q_table_new[3][prev_state] = 0;
+	//		}
+	//	}
+	//	q_table_new[plearn->direction][prev_state] = 0;
+	//}
+		if (max_qvalue_new == q_table_new[0][current_state]) {
+			//plearn->direction = 0;
+			cout << "new max q dir = 0" << endl;
+		}
+		else if (max_qvalue_new == q_table_new[1][current_state]) {
+			//plearn->direction = 1;
+			cout << "new max q dir = 1" << endl;
+		}
+		else if (max_qvalue_new == q_table_new[0][current_state]) {
+			//plearn->direction = 2;
+			cout << "new max q dir = 2" << endl;
+		}
+		else if (max_qvalue_new == q_table_new[0][current_state]) {
+			//plearn->direction = 3;
+			cout << "new max q dir = 3" << endl;
+		}
+		else {
+			cout << "error in max q new" << endl;
+		}
 }
 
 //determines max q value for the state http://www.cplusplus.com/forum/general/51452/
@@ -391,8 +416,7 @@ void gridworld::max_q_old(agent* plearn) {
 	max_qvalue_old = 0;
 	//int temp = 1;
 	//current_state = state.at(tempmatrix[plearn->agentY][plearn->agentX]);//coordinates flipped due to the state equation
-	//double array[4] = { };
-	//array[4] = { q_table[0][current_state],q_table[1][current_state],q_table[2][current_state],q_table[3][current_state] };
+
 	for (int q = 0; q < 4; q++) {
 		temp.at(q) = q_table_old[q][prev_state];
 	}
@@ -409,27 +433,27 @@ void gridworld::max_q_old(agent* plearn) {
 		}
 	}
 	//plearn->direction = temp;
-	//cout << "max q old = " << max_qvalue_old << endl;
+	cout << "max q old = " << max_qvalue_old << endl;
 
 
 	if (max_qvalue_old == q_table_old[0][prev_state]) {
 		plearn->direction = 0;
-		//cout << "max q dir = 0" << endl;
+		cout << "old max q dir = 0" << endl;
 	}
 	else if (max_qvalue_old == q_table_old[1][prev_state]) {
 		plearn->direction = 1;
-		//cout << "max q dir = 1" << endl;
+		cout << "old max q dir = 1" << endl;
 	}
 	else if (max_qvalue_old == q_table_old[2][prev_state]) {
 		plearn->direction = 2;
-		//cout << "max q dir = 2" << endl;
+		cout << "old max q dir = 2" << endl;
 	}
 	else if (max_qvalue_old == q_table_old[3][current_state]) {
 		plearn->direction = 3;
-		//cout << "max q dir = 3" << endl;
+		cout << "old max q dir = 3" << endl;
 	}
 	else {
-		//cout << "error in max q" << endl;
+		cout << "error in max q" << endl;
 	}
 }
 
@@ -448,12 +472,10 @@ void gridworld::max_q_new(agent* plearn) {
 	int num_actions = 4;
 	//int temp = 1;
 	//current_state = state.at(tempmatrix[plearn->agentY][plearn->agentX]);//coordinates flipped due to the state equation
-	//double array[4] = { };
-	//array[4] = { q_table[0][current_state],q_table[1][current_state],q_table[2][current_state],q_table[3][current_state] };
 	vector<double> temp1(4,0);
 	max_qvalue_new=0;
 	for (int q = 0; q < 4; q++) {
-		temp1.at(q) = q_table_new[q][prev_state];
+		temp1.at(q) = q_table_new[q][current_state];
 	}
 	//cout << "new vector" << endl;
 	/*for (int z = 0; z < temp1.size(); z++) {
@@ -467,13 +489,34 @@ void gridworld::max_q_new(agent* plearn) {
 		}
 	}
 	//plearn->direction = temp;
+	cout << "new max q = " << max_qvalue_new << endl;
+	//cout << "current state max q = " << current_state << endl;
+	//if (max_qvalue_new == q_table_new[0][current_state]) {
+	//	//plearn->direction = 0;
+	//	cout << "new max q dir = 0" << endl;
+	//}
+	//else if (max_qvalue_new == q_table_new[1][current_state]) {
+	//	//plearn->direction = 1;
+	//	cout << "new max q dir = 1" << endl;
+	//}
+	//else if (max_qvalue_new == q_table_new[0][current_state]) {
+	//	//plearn->direction = 2;
+	//	cout << "new max q dir = 2" << endl;
+	//}
+	//else if (max_qvalue_new == q_table_new[0][current_state]) {
+	//	//plearn->direction = 3;
+	//	cout << "new max q dir = 3" << endl;
+	//}
+	//else {
+	//	cout << "error in max q new" << endl;
+	//}
 }
 //decides what direction to pick 
 void decide(agent* plearn, gridworld* pmap) {
 	if (plearn->choice == 0) {
 		plearn->direction = rand() % 4;
 		//cout << "explore" << endl;
-		//cout << "explore direction = " << plearn->direction << endl;
+		cout << "explore direction = " << plearn->direction << endl;
 	}
 	else {
 		pmap->max_q_old(plearn);
@@ -481,7 +524,29 @@ void decide(agent* plearn, gridworld* pmap) {
 	}
 }
 
+//void testD(gridworld* pmap) {
+//	for (int a = 0; a < pmap->q_table_new.size(); a++) {
+//		if (pmap->goal_reward < pmap->q_table_new.at(a)) {
+//			cout << "large" << endl;
+//		}
+//	}
+//}
 
+void testE(agent* plearn, gridworld* pmap) {
+	assert(plearn->agentX == 0);
+	assert(plearn->agentY == 0);
+	
+}
+
+void testF(agent* plearn, gridworld* pmap) {
+	int min_moves;
+	min_moves = 1;
+	
+}
+
+void testG() {
+
+}
 
 int main() {
 	srand(time(NULL));
@@ -511,16 +576,17 @@ int main() {
 
 	grid.prev_state = 0;
 
-	for (int n = 0; n < 100; n++) {
+	for (int n = 0; n < 1; n++) {
 		stop = 0;
 		num_moves = 0;
 		smith.agentX = 0;
 		smith.agentY = 0;
-		smith.epsilon = 0;
+		smith.epsilon = .1;
 		while (stop < 1) {
 			//cout << endl;
 			//cout << endl;
 			cin >> pick_test;
+			//grid.current_state = grid.prev_state;
 			smith.explore_or_greedy();//decides to do random or greedy
 			decide(psmith, pgrid);//picks direction to move
 			grid.bumper_check(psmith);//checks if the move will hit bumper
@@ -528,6 +594,8 @@ int main() {
 			//cout << "move has been made" << endl;
 			//cin >> pick_test;
 			grid.prev_state_fxn(psmith);
+			grid.current_state = grid.state.at(grid.tempmatrix[smith.agentX][smith.agentY]);
+			cout << "current state = " << grid.current_state << endl;
 			grid.max_q_new(psmith);
 			//cout << "max q new = "<<grid.max_qvalue_new << endl;
 			grid.update_q_table(psmith);//updates q table based on move
@@ -552,6 +620,7 @@ int main() {
 				cout << "Goal Reached" << endl;
 			}
 			num_moves++;
+			//cout << num_moves << endl;
 		}
 		vstep.push_back(num_moves);
 		//cout << "moves = " << num_moves << endl;
