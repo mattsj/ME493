@@ -27,8 +27,10 @@ public:
 	double value=0;
 	double calculated_reward_avg;//experimental
 	double calculated_sigma;//experimental
+	double avg_value_out;
 
 	vector<double> vreward;
+	vector<double> vvalue;
 
 	void init();
 	void expected_value(double alpha);
@@ -50,6 +52,7 @@ void arm::expected_value(double alpha) {
 	else {
 		value = alpha*reward_of_arm + (1 - alpha)*(old_value);
 	}
+	vvalue.push_back(value);
 }
 
 
@@ -129,12 +132,47 @@ double generate_reward(double mu, double sigma)
 	return z0 * sigma + mu;
 }
 
-void testA() {
+//checks if an arm's calculated avg converges to its mu
+int testA(vector<arm> varm) {
+	int pass=0;
+	vector<int> temp;
+	//finds which arm pulled the most
+	for (int i = 0; i < varm.size(); i++) {
+		temp.push_back(varm.at(i).pull_count);
+	}
+	int t = 0;
+	int s;
+	for (int j = 0; j < temp.size(); j++) {
+		if (temp.at(j) > t) {
+			t = temp.at(j);
+			s = j;
+		}
+	}
 
+	double tolerance = .01;
+	if (varm.at(s).calculated_reward_avg <= varm.at(s).mu*(1 + tolerance)) {
+		if (varm.at(s).calculated_reward_avg >= varm.at(s).mu*(1 - tolerance)) {
+			pass = 1;
+		}
+	}
+	assert(pass == 1);
+	cout << "test A pass" << endl;
+
+	return s;
 }
 
-void testB() {
-
+//determines if the best arm is pulled the most by looking at the avg value out
+void testB(vector<arm> varm, int a) {
+	double t = 0.0;
+	int b;
+	for (int i = 0; i < varm.size(); i++) {
+		if (varm.at(i).avg_value_out > t) {
+			t = varm.at(i).avg_value_out;
+			b = i;
+		}
+	}
+	assert(b == a);
+	cout << "test B pass" << endl;
 }
 
 
@@ -169,7 +207,7 @@ int main() {
 	int explore_count = 0;
 	int greedy_count = 0;
 
-	for (int n = 0; n < 300; n++) {
+	for (int n = 0; n < 1000; n++) {
 		decide = explore_or_greedy(epsilon);
 		if (decide == 0) {
 			//explore
@@ -180,6 +218,7 @@ int main() {
 			varm.at(arm_input).vreward.push_back(varm.at(arm_input).reward_of_arm);
 			varm.at(arm_input).calculated_reward_avg = average(varm.at(arm_input).vreward);//calculates average reward of the arm
 			varm.at(arm_input).expected_value(alpha);//gets new value of arm
+			//varm.at(arm_input).vvalue.push_back(varm.)
 			varm.at(arm_input).calculated_sigma = stdev(varm.at(arm_input).vreward, varm.at(arm_input).calculated_reward_avg);//calculates variance
 			action_curve.push_back(arm_input);
 			epsilon = epsilon_decay(epsilon, n+1);
@@ -218,6 +257,13 @@ int main() {
 		}
 	}
 
+	for (int r = 0; r < num_arms; r++) {
+		varm.at(r).avg_value_out = average(varm.at(r).vvalue);
+	}
+
+	int s = testA(varm);//runs test A and returns which arm was pulled the most
+	testB(varm, s);
+
 	cout << "explore count = " << explore_count << endl;
 	cout << "greedy count = " << greedy_count << endl;
 
@@ -228,12 +274,16 @@ int main() {
 	}
 
 
-	ofstream project_alpha_v2;
-	project_alpha_v2.open("project_alpha.txt");
+	ofstream learn;
+	ofstream action;
+	learn.open("learn_curve.txt");
+	action.open("action_curve.txt");
 	for (int m = 0; m < learn_curve.size(); m++) {
-		project_alpha_v2 << learn_curve.at(m) << endl;
+		learn << learn_curve.at(m) << endl;
+		action << action_curve.at(m) << endl;
 	}
-	project_alpha_v2.close();
+	learn.close();
+	action.close();
 	
 
 	return 0;
