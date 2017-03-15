@@ -38,7 +38,7 @@ public:
 
 void arm::init() {
 	mu = MJRAND * 10;
-	sigma = MJRAND * 2;
+	sigma = MJRAND;
 	calculated_reward_avg = MJRAND*.001;
 	calculated_sigma = MJRAND*.001;
 }
@@ -201,13 +201,13 @@ int main() {
 	vector<double> action_curve;
 
 	int arm_input;
-	double epsilon = .3;
+	double epsilon = .5;
 	double alpha = .1;
 	int decide;
 	int explore_count = 0;
 	int greedy_count = 0;
 
-	for (int n = 0; n < 1000; n++) {
+	for (int n = 0; n < num_arms*200; n++) {
 		decide = explore_or_greedy(epsilon);
 		if (decide == 0) {
 			//explore
