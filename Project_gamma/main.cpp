@@ -42,7 +42,9 @@ void agent::calc_d() {
 	calcY = new_agentY - agentY;
 	double total = pow(calcX, 2) + pow(calcY, 2);
 	distance = sqrt(total);
+	cout << "distance = " << distance << endl;
 	total_distance = total_distance + distance;
+	cout << "total d = " << total_distance << endl;
 }
 
 
@@ -74,8 +76,6 @@ public:
 
 //swaps the city order of two cities, can't swap the starting city
 void policy::mutate() {
-	//cout << "mutate" << endl;
-	//cout << "size = " << order.size() << endl;
 	int rand1 = rand() % order.size();
 	if (rand1 == 0) {
 		rand1 = rand1 + 1;
@@ -90,20 +90,10 @@ void policy::mutate() {
 			rand2 = rand2 + 1;
 		}
 	}
-	/*cout << "r1 = " << rand1 << endl;
-	cout << "r2 = " << rand2 << endl;
-	for (int i = 0; i < order.size(); i++) {
-		cout << order.at(i) << endl;
-	}*/
-	//cout << "break" << endl;
 	int temp;
 	temp = order.at(rand1);
-	//cout << "temp = " << temp << endl;
-	//cout << "1 = "<<order.at(rand1) << endl;
-	//cout << "2 = "<<order.at(rand2) << endl;
 	order.at(rand1) = order.at(rand2);
 	order.at(rand2) = temp;
-	//cout << "done mutate" << endl;
 }
 
 //only for initial guesses
@@ -117,49 +107,50 @@ int pick_city(vector<city> vcity) {
 	}
 	return t;
 }
-vector<city> move(agent* pagent, vector<city> vcity, int picked_city) {
-	vcity.at(picked_city).visit = 1;
+double movex(agent* pagent, vector<city> vcity, int picked_city) {
 	pagent->new_agentX = vcity.at(picked_city).cityX;
+	return pagent->new_agentX;
+}
+
+double movey(agent* pagent, vector<city> vcity, int picked_city) {
 	pagent->new_agentY = vcity.at(picked_city).cityY;
-	return vcity;
+	return pagent->new_agentY;
 }
 
 //only for mutating
-double mutate_move(agent* pagent, vector<city> vcity, vector<policy> vpolicy) {
+//calcs total distance for new city order
+double mutate_move(agent* pagent, policy p,vector<city> city_info) {
 	pagent->distance = 0;
 	pagent->total_distance = 0;
-	for (int i = 0; i < vpolicy.size() - 1; i++) {
-		int city1 = 0;
-		int city2 = 1;
-		pagent->agentX = vcity.at(city1).cityX;
-		pagent->agentY = vcity.at(city1).cityY;
-		pagent->new_agentX = vcity.at(city2).cityX;
-		pagent->new_agentY = vcity.at(city2).cityY;
+	//cout << "size = " << vpolicy.at(0).order.size() << endl;
+	for (int i = 0; i < p.order.size()-1; i++) {
+		int city1 = 0;//city agent is at
+		int city2 = 1;//city agent will travel to
+		int temp_loc1 = 0;
+		int temp_loc2 = 0;
+		for (int i = 0; i < city_info.size(); i++) {
+			if (p.order.at(city1) == city_info.at(i).number) {
+				temp_loc1 = i;
+			}
+			if (p.order.at(city2) == city_info.at(i).number) {
+				temp_loc2 = i;
+			}
+		}
+		city info1 = city_info.at(temp_loc1);
+		city info2 = city_info.at(temp_loc2);
+		pagent->agentX = info1.cityX;
+		pagent->agentY = info1.cityY;
+		pagent->new_agentX = info2.cityX;
+		pagent->new_agentY = info2.cityY;
 		pagent->calc_d();
-		pagent->total_distance = pagent->total_distance + pagent->distance;
 		city1++;
 		city2++;
 	}
 	return pagent->total_distance;
 }
 
-//resets agent and cities to be unvisited
-//int start(vector<city> vcity, int start_city, agent* pagent) {
-//	for (int i = 0; i < vcity.size(); i++) {
-//		vcity.at(i).visit = 0;
-//	}
-//	vcity.at(start_city).visit = 1;
-//
-//	pagent->agentX = vcity.at(start_city).cityX;
-//	pagent->agentY = vcity.at(start_city).cityY;
-//	pagent->distance = 0;
-//	pagent->total_distance = 0;
-//
-//	return vcity.at(start_city).visit;
-//}
-
 //creates  copy of a policy and mutates
-vector<policy> replicate(vector<policy> vP, agent* pagent, vector<city> vcity) {
+vector<policy> replicate(vector<policy> vP, agent* pagent, vector<city> city_info) {
 	//cout << "replicate" << endl;
 	vector<policy> pop;//new vector of policies
 	pop = vP;
@@ -167,8 +158,12 @@ vector<policy> replicate(vector<policy> vP, agent* pagent, vector<city> vcity) {
 		int spot = rand() % pop.size();
 		policy p;
 		p = pop.at(spot);
+		cout << "mutate" << endl;
 		p.mutate();
-		p.total_d = mutate_move(pagent, vcity, pop);
+		//for (int i = 0; i < p.order.size(); i++) {
+		//	cout << p.order.at(i) << "\t";
+		//}
+		p.total_d = mutate_move(pagent, p,city_info);
 		pop.push_back(p);
 	}
 	assert(pop.size() == vP.size() * 2);
@@ -210,6 +205,7 @@ int main() {
 	smith.init();
 	city town;
 	vector<city> vcity;
+	vector<city> city_info;
 	int num_cities;
 	cout << "enter number of cities" << endl;
 	cin >> num_cities;
@@ -226,6 +222,7 @@ int main() {
 		}
 		town.number = count;
 		vcity.push_back(town);
+		city_info.push_back(town);
 		count++;
 	}
 	assert(num_cities == vcity.size());
@@ -240,8 +237,8 @@ int main() {
 	int start_city = 0;//city where the agent will start
 	int chosen_city;
 
-	int generations = 5;//number of RED cycles
-	int num_policies = 10;//number of total policies
+	int generations = 1;//number of RED cycles
+	int num_policies = 2;//number of total policies
 
 	//initial guesses
 	cout << "begin guess" << endl;
@@ -263,16 +260,17 @@ int main() {
 		P.total_d = 0;
 		P.order.push_back(vcity.at(start_city).number);
 
-		//guesses
-		//cout << "guess" << endl;
-		int gar;
-		//cin >> gar;
+		//initial guesses
 		for (int f = 0; f < num_cities-1; f++) {
 			chosen_city = pick_city(vcity);
-			vcity = move(psmith, vcity, chosen_city);
+			smith.new_agentX = movex(psmith, vcity, chosen_city);
+			smith.new_agentY = movey(psmith, vcity, chosen_city);
+			vcity.at(chosen_city).visit = 1;
 			smith.calc_d(); 
 			//cout << "d = " << smith.distance << endl;
 			P.order.push_back(vcity.at(chosen_city).number);
+			smith.agentX = smith.new_agentX;
+			smith.agentY = smith.new_agentY;
 		}
 		P.total_d = smith.total_distance;
 		vpolicy.push_back(P);
@@ -283,6 +281,7 @@ int main() {
 
 	//generation
 	for (int current_g = 0; current_g < generations; current_g++) {
+		cout << "g = " << current_g << endl;
 		//replicate/mutate
 		vpolicy = replicate(vpolicy, psmith, vcity);
 			//for (int j = 0; j < vpolicy.at(0).order.size(); j++) {
@@ -291,15 +290,17 @@ int main() {
 			//cout << endl;
 		//downselect
 		vpolicy = downselect(vpolicy);
-		for (int i = 0; i < vpolicy.size(); i++) {
+	/*	for (int i = 0; i < vpolicy.size(); i++) {
 			cout << vpolicy.at(i).total_d << endl;
 		}
-		cout << endl;
+		cout << endl;*/
+
 	}
 	assert(vpolicy.size() == num_policies);
 
 	double min_value = 1000000000;
 	int min_loc;
+	cout << "final policies" << endl;
 	for (int r = 0; r < vpolicy.size(); r++) {
 		cout << "d = " << vpolicy.at(r).total_d << endl;
 		if (vpolicy.at(r).total_d < min_value) {
@@ -307,6 +308,7 @@ int main() {
 			min_loc = r;
 		}
 	}
+
 	cout << "min loc = " << min_loc << endl;
 	cout << "total d = " << min_value << endl;
 	for (int w = 0; w < vpolicy.at(min_loc).order.size(); w++) {
