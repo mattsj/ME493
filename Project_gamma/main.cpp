@@ -42,9 +42,9 @@ void agent::calc_d() {
 	calcY = new_agentY - agentY;
 	double total = pow(calcX, 2) + pow(calcY, 2);
 	distance = sqrt(total);
-	cout << "distance = " << distance << endl;
+	//cout << "distance = " << distance << endl;
 	total_distance = total_distance + distance;
-	cout << "total d = " << total_distance << endl;
+	//cout << "total d = " << total_distance << endl;
 }
 
 
@@ -64,6 +64,9 @@ void city::init() {
 	cityX = MJRAND*(max - min) + min;
 	cityY = MJRAND*(max - min) + min;
 }
+
+
+
 
 //contains order of cities selected and total distance 
 class policy {
@@ -122,10 +125,14 @@ double movey(agent* pagent, vector<city> vcity, int picked_city) {
 double mutate_move(agent* pagent, policy p,vector<city> city_info) {
 	pagent->distance = 0;
 	pagent->total_distance = 0;
-	//cout << "size = " << vpolicy.at(0).order.size() << endl;
+	//cout << "size = " << p.order.size() << endl;
+	//for (int t = 0; t < p.order.size(); t++) {
+	//	cout << p.order.at(t) << "\t";
+	//}
+	//cout << endl;
+	int city1 = 0;//city agent is it
+	int city2 = 1;//city agent will travel to
 	for (int i = 0; i < p.order.size()-1; i++) {
-		int city1 = 0;//city agent is at
-		int city2 = 1;//city agent will travel to
 		int temp_loc1 = 0;
 		int temp_loc2 = 0;
 		for (int i = 0; i < city_info.size(); i++) {
@@ -142,6 +149,8 @@ double mutate_move(agent* pagent, policy p,vector<city> city_info) {
 		pagent->agentY = info1.cityY;
 		pagent->new_agentX = info2.cityX;
 		pagent->new_agentY = info2.cityY;
+		//cout << "x = " << pagent->agentX << " y= " << pagent->agentY << endl;
+		//cout << "newx = " << pagent->new_agentX << " newy =" << pagent->new_agentY << endl;
 		pagent->calc_d();
 		city1++;
 		city2++;
@@ -158,7 +167,7 @@ vector<policy> replicate(vector<policy> vP, agent* pagent, vector<city> city_inf
 		int spot = rand() % pop.size();
 		policy p;
 		p = pop.at(spot);
-		cout << "mutate" << endl;
+		//cout << "mutate" << endl;
 		p.mutate();
 		//for (int i = 0; i < p.order.size(); i++) {
 		//	cout << p.order.at(i) << "\t";
@@ -198,6 +207,31 @@ vector<policy> downselect(vector<policy> vP) {
 	return population;
 }
 
+double average_d(vector<policy> vpolicy) {
+	double sum = 0;
+	for (int i = 0; i < vpolicy.size(); i++) {
+		sum = sum + vpolicy.at(i).total_d;
+	}
+	return sum / vpolicy.size();
+}
+
+vector<city> hand_calc() {
+	city A;
+	vector<city> vcity;
+	int town_number = 0;
+	int x = 0;
+	int y = 0;
+	for (int i = 0; i < 10; i++) {
+		A.cityX = x;
+		A.cityY = y;
+		A.number = town_number;
+		vcity.push_back(A);
+		x++;
+		town_number++;
+	}
+	return vcity;
+}
+
 int main() {
 	srand(time(NULL));
 	agent smith;
@@ -210,25 +244,35 @@ int main() {
 	cout << "enter number of cities" << endl;
 	cin >> num_cities;
 	int count = 0;
-	for (int a = 0; a < num_cities; a++) {
-		town.init();
-		//checks for cities in same loc
-		if (a >= 1) {
-			for (int g = 0; g < vcity.size(); g++) {
-				while ((town.cityX == vcity.at(g).cityX) && (town.cityY == vcity.at(g).cityY)) {
-					town.init();
+	int ten_cities;
+	cout << "enter 0 to have 10 cities placed in a horizontal line, else input 1 to generate random cities" << endl;
+	cin >> ten_cities;
+	if (ten_cities == 0) {
+		vcity = hand_calc();
+		num_cities = 10;
+		city_info = vcity;
+	}
+	else {
+		for (int a = 0; a < num_cities; a++) {
+			town.init();
+			//checks for cities in same loc
+			if (a >= 1) {
+				for (int g = 0; g < vcity.size(); g++) {
+					while ((town.cityX == vcity.at(g).cityX) && (town.cityY == vcity.at(g).cityY)) {
+						town.init();
+					}
 				}
 			}
+			town.number = count;
+			vcity.push_back(town);
+			city_info.push_back(town);
+			count++;
 		}
-		town.number = count;
-		vcity.push_back(town);
-		city_info.push_back(town);
-		count++;
+		assert(num_cities == vcity.size());
 	}
-	assert(num_cities == vcity.size());
-	for (int z = 0; z < vcity.size(); z++) {
+	/*for (int z = 0; z < vcity.size(); z++) {
 		cout << "x = " << vcity.at(z).cityX << " y = " << vcity.at(z).cityY << " visit = " << vcity.at(z).visit << endl;
-	}
+	}*/
 
 	policy P;
 	vector<policy> vpolicy;
@@ -237,8 +281,8 @@ int main() {
 	int start_city = 0;//city where the agent will start
 	int chosen_city;
 
-	int generations = 1;//number of RED cycles
-	int num_policies = 2;//number of total policies
+	int generations = 100;//number of RED cycles
+	int num_policies = 20;//number of total policies
 
 	//initial guesses
 	cout << "begin guess" << endl;
@@ -272,6 +316,7 @@ int main() {
 			smith.agentX = smith.new_agentX;
 			smith.agentY = smith.new_agentY;
 		}
+		//cout << "guess " << e << endl;
 		P.total_d = smith.total_distance;
 		vpolicy.push_back(P);
 
@@ -279,6 +324,8 @@ int main() {
 	cout << "finished guess" << endl;
 	assert(vpolicy.size() == num_policies);
 
+	double average;
+	vector<double> learn_curve;
 	//generation
 	for (int current_g = 0; current_g < generations; current_g++) {
 		cout << "g = " << current_g << endl;
@@ -294,25 +341,34 @@ int main() {
 			cout << vpolicy.at(i).total_d << endl;
 		}
 		cout << endl;*/
-
+		average = average_d(vpolicy);
+		learn_curve.push_back(average);
 	}
 	assert(vpolicy.size() == num_policies);
 
 	double min_value = 1000000000;
 	int min_loc;
-	cout << "final policies" << endl;
+	cout << "final policy" << endl;
 	for (int r = 0; r < vpolicy.size(); r++) {
-		cout << "d = " << vpolicy.at(r).total_d << endl;
+		//cout << "d = " << vpolicy.at(r).total_d << endl;
 		if (vpolicy.at(r).total_d < min_value) {
 			min_value = vpolicy.at(r).total_d;
 			min_loc = r;
 		}
 	}
 
-	cout << "min loc = " << min_loc << endl;
+	//cout << "min loc = " << min_loc << endl;
 	cout << "total d = " << min_value << endl;
-	for (int w = 0; w < vpolicy.at(min_loc).order.size(); w++) {
+	/*for (int w = 0; w < vpolicy.at(min_loc).order.size(); w++) {
 		cout << vpolicy.at(min_loc).order.at(w) << endl;
+	}*/
+
+	ofstream project_gamma;
+	project_gamma.open("learn_curve.txt");
+	for (int m = 0; m < learn_curve.size(); m++) {
+		project_gamma << learn_curve.at(m) << endl;
 	}
+	project_gamma.close();
+
 	return 0;
 }
