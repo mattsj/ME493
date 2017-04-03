@@ -281,8 +281,8 @@ int main() {
 	int start_city = 0;//city where the agent will start
 	int chosen_city;
 
-	int generations = 100;//number of RED cycles
-	int num_policies = 20;//number of total policies
+	int generations = 500;//number of RED cycles
+	int num_policies = 100;//number of total policies
 
 	//initial guesses
 	cout << "begin guess" << endl;
@@ -328,7 +328,7 @@ int main() {
 	vector<double> learn_curve;
 	//generation
 	for (int current_g = 0; current_g < generations; current_g++) {
-		cout << "g = " << current_g << endl;
+		//cout << "g = " << current_g << endl;
 		//replicate/mutate
 		vpolicy = replicate(vpolicy, psmith, vcity);
 			//for (int j = 0; j < vpolicy.at(0).order.size(); j++) {
@@ -349,6 +349,7 @@ int main() {
 	double min_value = 1000000000;
 	int min_loc;
 	cout << "final policy" << endl;
+	//determines the policy with the lowest total distance 
 	for (int r = 0; r < vpolicy.size(); r++) {
 		//cout << "d = " << vpolicy.at(r).total_d << endl;
 		if (vpolicy.at(r).total_d < min_value) {
@@ -357,12 +358,19 @@ int main() {
 		}
 	}
 
+	//checks if for ten cities in a row, the final total distance is equal to 9 (lowest distance possible)
+	if (ten_cities == 0) {
+		assert(min_value == 9);
+	}
+
 	//cout << "min loc = " << min_loc << endl;
 	cout << "total d = " << min_value << endl;
-	/*for (int w = 0; w < vpolicy.at(min_loc).order.size(); w++) {
+	//displays the best policy's path
+	for (int w = 0; w < vpolicy.at(min_loc).order.size(); w++) {
 		cout << vpolicy.at(min_loc).order.at(w) << endl;
-	}*/
+	}
 
+	//write learning curve to text file
 	ofstream project_gamma;
 	project_gamma.open("learn_curve.txt");
 	for (int m = 0; m < learn_curve.size(); m++) {
