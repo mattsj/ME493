@@ -58,14 +58,14 @@ void ship::init() {
 	int grid_min = 0;
 	//xpos = MJRAND*(grid_max - grid_min) + grid_min;
 	//ypos = MJRAND*(grid_max - grid_min) + grid_min;
-	xpos = 100;
-	ypos = 100;
+	xpos = 300;
+	ypos = 300;
 	startx = xpos;
 	starty = ypos;
 	double theta_max = 360 * pi / 180;
 	double theta_min = 0;
-	theta = MJRAND*(theta_max - theta_min) + theta_min;
-	//theta = pi / 4;
+	//theta = MJRAND*(theta_max - theta_min) + theta_min;
+	theta = 270 * pi / 180;
 	start_theta = theta;
 	int omega_max = 10;
 	int omega_min = 1;
@@ -115,6 +115,7 @@ public:
 	double ypos;
 	double theta;
 	double omega;
+	double num_moves;
 
 	void init(ship* pboat);
 	void reset();
@@ -254,6 +255,16 @@ double calc_fitness(ship* pboat, goal* pgoal) {
 	return distance;
 }
 
+double average(vector<policy> P) {
+	double sum = 0;
+	double avg;
+	for (int i = 0; i < P.size(); i++) {
+		sum = sum + P.at(i).num_moves;
+	}
+	avg = sum / P.size();
+	return avg;
+}
+
 //moves in straight line up
 void mr1(ship* pboat) {
 	pboat->init();
@@ -344,7 +355,16 @@ int main() {
 	policy P;
 	vector<policy> vP;
 
-	int num_policies = 100;
+	vector<double> total_moves;
+	double time_taken = 0;
+
+	ofstream init_path;
+	init_path.open("init_path.txt");
+
+	ofstream final_path;
+	final_path.open("final_path.txt");
+
+	int num_policies = 6;
 	//generate initial policies
 	for (int z = 0; z < num_policies; z++) {
 		//cout << "policy " << z << endl;
@@ -400,6 +420,7 @@ int main() {
 			count++;
 			//stops simulation after large number of time steps
 			if (count > 200) {
+
 				//cout << "too many time steps" << endl;
 				break;
 			}
@@ -411,21 +432,25 @@ int main() {
 		}
 		double fitness = calc_fitness(pboat, pg);
 		//cout << fitness << endl;
-		P.fitness = fitness;
-		
+		if (count > 200) {
+			P.fitness = fitness + 1000;
+		}
+		else {
+			P.fitness = fitness;
+		}
 		//mr4
 		assert(P.fitness >= 0);
-
+		P.num_moves = count;
 		vP.push_back(P);
 		P.reset();
 		weights.clear();
 	}
 
-
-
+	time_taken = average(vP);
+	total_moves.push_back(time_taken);
 
 	//generations
-	int num_generations = 50;
+	int num_generations = 3;
 	for (int r = 0; r < num_generations; r++) {
 		cout << "generation " << r << endl;
 		//downselect
@@ -471,7 +496,7 @@ int main() {
 			int boundary;
 			boundary = boundary_check(psimb, grid_min, grid_max);
 
-			int count = 0;
+			int moves = 0;
 			//boat will stop moving if it crosses the goal or goes outside the grid
 
 			while ((goal == 0) && (boundary == 0)) {
@@ -490,9 +515,9 @@ int main() {
 					cout << "outside grid" << endl;
 				}
 
-				count++;
+				moves++;
 				//stops simulation after large number of time steps
-				if (count > 200) {
+				if (moves > 200) {
 					//cout << "too many time steps" << endl;
 					break;
 				}
@@ -504,20 +529,46 @@ int main() {
 			}
 
 			double fit = calc_fitness(psimb, pg);
-			simp.fitness = fit;
+			if (moves > 200) {
+				simp.fitness = fit + 1000;
+			}
+			else {
+				simp.fitness = fit;
+			}
+			simp.num_moves = moves;
 			vP.at(v) = simp;
 			simp.reset();
 		}
 		
-		/*double temp = 0;
-		int loc = 0;
-		for (int a = 0; a < vP.size(); a++) {
-			if (vP.at(a).fitness >= 0) {d
-				temp = vP.at(a).fitness;
-				loc = a;
+		//wrties path for first generation of best policy 
+		if (r < 1) {
+			double temp = 0;
+			int loc = 0;
+			for (int a = 0; a < vP.size(); a++) {
+				if (vP.at(a).fitness >= temp) {
+					temp = vP.at(a).fitness;
+					loc = a;
+				}
+			}
+			for (int j = 0; j < vP.at(loc).pathx.size(); j++) {
+				init_path << vP.at(loc).pathx.at(j) << "\t" << vP.at(loc).pathy.at(j) << endl;
 			}
 		}
-		cout << "smallest fitness = " << temp << endl;*/
+
+		time_taken = average(vP);
+		total_moves.push_back(time_taken);
+	}
+
+	double f = 0;
+	int place = 0;
+	for (int x = 0; x < vP.size(); x++) {
+		if (vP.at(x).fitness >= f) {
+			f = vP.at(x).fitness;
+			place = x;
+		}
+	}
+	for (int j = 0; j < vP.at(place).pathx.size(); j++) {
+		final_path << vP.at(place).pathx.at(j) << "\t" << vP.at(place).pathy.at(j) << endl;
 	}
 
 	cout << "final fitness" << endl;
@@ -525,5 +576,15 @@ int main() {
 		cout << vP.at(b).fitness << endl;
 	}
 
+
+	ofstream learn_curve;
+	learn_curve.open("learn_curve.txt");
+	for (int i = 0; i < total_moves.size(); i++) {
+		learn_curve << total_moves.at(i) << endl;
+	}
+
+	init_path.close();
+	final_path.close();
+	learn_curve.close();
 	return 0;
 }
