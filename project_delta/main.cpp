@@ -264,13 +264,15 @@ void mr1(ship* pboat) {
 	cout << "initial pos" << endl;
 	cout << pboat->xpos << "\t" << pboat->ypos << endl;
 	double inity = pboat->ypos;
+	double initx = pboat->ypos;
 	int count = 0;
-	while (count<20) {
+	while (count<10) {
 		pboat->simulate();
 		cout << pboat->xpos << "\t" << pboat->ypos << endl;
 		count++;
 	}
 	assert(pboat->ypos > inity);
+	assert(1 > (pboat->xpos - initx));//0 degrees is not directly up, makes boat move slightly to left also
 	cout << "done moving in straight line" << endl;
 	int a;
 	cout << "enter any number to continue" << endl;
@@ -372,18 +374,20 @@ int main() {
 		int boundary;
 		boundary = boundary_check(pboat, grid_min, grid_max);
 
+		//mr3
+		assert(boat.dist > 0);
+		assert(boat.theta >= 0 && boat.theta <= 2 * pi);
+
 		int count = 0;
 		//boat will stop moving if it crosses the goal or goes outside the grid
 
 		while ((goal == 0) && (boundary == 0)) {
 			NN.execute();
-			//cout << "before" << endl << boat.xpos << "\t" << boat.ypos << "\t" << boat.omega << "\t" << boat.theta << "\t" << boat.control_signal << endl;
 			double NNval = NN.get_output(0);
 			boat.control_signal = NNval;
 			boat.simulate();//obtain boat's new state
 			P.pathx.push_back(boat.xpos);
 			P.pathy.push_back(boat.ypos);
-			//cout << "after" << endl << boat.xpos << "\t" << boat.ypos << "\t" << boat.omega << "\t" << boat.theta << "\t" << boat.control_signal << endl;
 			goal = goal_check(pboat, pg);
 			if (goal == 1) {
 				cout << "goal" << endl;
@@ -395,7 +399,7 @@ int main() {
 
 			count++;
 			//stops simulation after large number of time steps
-			if (count > 2000) {
+			if (count > 200) {
 				//cout << "too many time steps" << endl;
 				break;
 			}
@@ -405,27 +409,23 @@ int main() {
 			inputs.push_back(boat.theta);
 			NN.set_vector_input(inputs);
 		}
-		//cout << count << endl;
-		//cout << boat.xpos << "\t" << boat.ypos << endl;
 		double fitness = calc_fitness(pboat, pg);
 		//cout << fitness << endl;
 		P.fitness = fitness;
+		
+		//mr4
+		assert(P.fitness >= 0);
+
 		vP.push_back(P);
-		//cout << P.fitness << "\t" << P.pathx.size() << "\t" << P.pathy.size() << endl;
-		//for (int y = 0; y < P.weights.size(); y++) {
-		//	cout << P.weights.at(y);
-		//}
 		P.reset();
 		weights.clear();
-		//cout << vP.size();
-		
 	}
 
 
 
 
 	//generations
-	int num_generations = 5;
+	int num_generations = 50;
 	for (int r = 0; r < num_generations; r++) {
 		cout << "generation " << r << endl;
 		//downselect
@@ -438,9 +438,6 @@ int main() {
 
 		//simulate
 		for (int v = 0; v < vP.size(); v++) {
-			/*int tt;
-			cin >> tt;*/
-			//cout << "v " << v << endl;
 			ship simb;
 			simb.init();
 			ship* psimb = &simb;
@@ -448,7 +445,6 @@ int main() {
 			simp = vP.at(v);
 			simb.xpos = simp.xpos;
 			simb.ypos = simp.ypos;
-			//cout << "init \t" << simb.xpos << "\t" << simb.ypos << endl;
 			simb.theta = simp.theta;
 			simb.omega = simp.theta;
 			
@@ -480,13 +476,11 @@ int main() {
 
 			while ((goal == 0) && (boundary == 0)) {
 				NN.execute();
-				//cout << "before" << endl << boat.xpos << "\t" << boat.ypos << "\t" << boat.omega << "\t" << boat.theta << "\t" << boat.control_signal << endl;
 				double NNval = NN.get_output(0);
 				simb.control_signal = NNval;
 				simb.simulate();//obtain boat's new state
 				simp.pathx.push_back(simb.xpos);
 				simp.pathy.push_back(simb.ypos);
-				//cout << "after" << endl << boat.xpos << "\t" << boat.ypos << "\t" << boat.omega << "\t" << boat.theta << "\t" << boat.control_signal << endl;
 				goal = goal_check(psimb, pg);
 				if (goal == 1) {
 					cout << "goal" << endl;
@@ -498,7 +492,7 @@ int main() {
 
 				count++;
 				//stops simulation after large number of time steps
-				if (count > 2000) {
+				if (count > 200) {
 					//cout << "too many time steps" << endl;
 					break;
 				}
@@ -508,18 +502,11 @@ int main() {
 				inputs.push_back(simb.theta);
 				NN.set_vector_input(inputs);
 			}
-			//cout << count << endl;
-			//cout <<"final \t"<< simb.xpos << "\t" << simb.ypos << endl;
+
 			double fit = calc_fitness(psimb, pg);
-			//cout << fit<<endl;
 			simp.fitness = fit;
 			vP.at(v) = simp;
-			//cout << P.fitness << "\t" << P.pathx.size() << "\t" << P.pathy.size() << endl;
-			//for (int y = 0; y < P.weights.size(); y++) {
-			//	cout << P.weights.at(y);
-			//}
 			simp.reset();
-			//cout << vP.size();
 		}
 		
 		/*double temp = 0;
