@@ -364,7 +364,7 @@ int main() {
 	ofstream final_path;
 	final_path.open("final_path.txt");
 
-	int num_policies = 6;
+	int num_policies = 100;
 	//generate initial policies
 	for (int z = 0; z < num_policies; z++) {
 		//cout << "policy " << z << endl;
@@ -380,8 +380,8 @@ int main() {
 		boat.dist = calc_fitness(pboat, pg);
 		inputs.push_back(boat.dist);
 		inputs.push_back(boat.theta);
-		//NN setup 
 
+		//NN setup 
 		NN.set_vector_input(inputs);
 		num_weights = NN.get_number_of_weights();
 		for (int i = 0; i < num_weights; i++) {
@@ -419,7 +419,7 @@ int main() {
 
 			count++;
 			//stops simulation after large number of time steps
-			if (count > 200) {
+			if (count > 300) {
 
 				//cout << "too many time steps" << endl;
 				break;
@@ -432,7 +432,7 @@ int main() {
 		}
 		double fitness = calc_fitness(pboat, pg);
 		//cout << fitness << endl;
-		if (count > 200) {
+		if (count > 300) {
 			P.fitness = fitness + 1000;
 		}
 		else {
@@ -450,7 +450,7 @@ int main() {
 	total_moves.push_back(time_taken);
 
 	//generations
-	int num_generations = 3;
+	int num_generations = 200;
 	for (int r = 0; r < num_generations; r++) {
 		cout << "generation " << r << endl;
 		//downselect
@@ -517,7 +517,7 @@ int main() {
 
 				moves++;
 				//stops simulation after large number of time steps
-				if (moves > 200) {
+				if (moves > 300) {
 					//cout << "too many time steps" << endl;
 					break;
 				}
@@ -529,7 +529,7 @@ int main() {
 			}
 
 			double fit = calc_fitness(psimb, pg);
-			if (moves > 200) {
+			if (moves > 300) {
 				simp.fitness = fit + 1000;
 			}
 			else {
