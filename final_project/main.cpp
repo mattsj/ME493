@@ -123,20 +123,25 @@ public:
 
 //swaps the order of two cities
 void policy::mutate(int num_states, vector<state> vstate) {
+	//for (int i = 0; i < vstate.size(); i++) {
+	//	cout << vstate.at(i).num_cities << endl;
+	//}
 	int state = rand() % num_states;
+	//cout << "state " << state << endl;
 	int t = 0;
 	//calculate min for rand
 	for (int i = 0; i < state; i++) {
 		t = t + vstate.at(i).num_cities;
 	}
-	int s = vstate.at(state).num_cities + t;//calculate max for rand
-	//set limits for which cities can be mutated
-	int rand1 = rand() % s + t;
-	int rand2 = rand() % s + t;
-	
-	while (rand1 == rand2) {
-		rand2 = rand() % s + t;
+	//cout<<"t " << t << endl;
+	//set limits for which cities can be mutated based on the state picked
+	int rand1 = rand() % vstate.at(state).num_cities + t;
+	int rand2 = rand() % vstate.at(state).num_cities + t;
+	while (rand1==rand2) {
+		rand2 = rand() % vstate.at(state).num_cities + t;
+		//cout << "rand2 " << rand2 << endl;
 	}
+	//cout << "rand1 " << rand1<< "\t rand2 " << rand2 << endl;
 	city temp;
 	temp = order.at(rand1);
 	order.at(rand1) = order.at(rand2);
@@ -204,18 +209,53 @@ int pick_state(vector<state> vstate) {
 	return t;
 }
 
+double calc_city_dist(vector<city> vcity) {
+	agent a;
+	a.agentX = 0;
+	a.agentY = 0;
+	double d = 0;
+	double total = 0;
+	for (int i = 0; i < vcity.size(); i++) {
+		a.new_agentX = vcity.at(i).cityX;
+		a.new_agentY = vcity.at(i).cityY;
+		double x = pow(a.new_agentX - a.agentX, 2);
+		double y = pow(a.new_agentY - a.agentY, 2);
+		d = sqrt(x + y);
+		total = total + d;
+	}
+	return total;
+}
+
+double calc_state_dist(vector<state> nation) {
+	agent a;
+	a.agentX = 0;
+	a.agentY = 0;
+	double d = 0;
+	double total = 0;
+	for (int i = 0; i < nation.size(); i++) {
+		a.new_agentX = nation.at(i).midx;
+		a.new_agentY = nation.at(i).midy;
+		double x = pow(a.new_agentX - a.agentX, 2);
+		double y = pow(a.new_agentY - a.agentY, 2);
+		d = sqrt(x + y);
+		total = total + d;
+	}
+	return total;
+}
+
 //creates  copy of a policy and mutates
 vector<policy> replicate_city(vector<policy> vP, int num_states, vector<state> vstate) {
 	//cout << "replicate" << endl;
 	vector<policy> pop;//new vector of policies
 	pop = vP;
 	while (pop.size() < vP.size() * 2) {
+		//cout << "pop " << pop.size() << "\t vp " << vP.size()*2 << endl;
 		int spot = rand() % pop.size();
 		policy p;
 		p = pop.at(spot);
 		//cout << "mutate" << endl;
 		p.mutate(num_states, vstate);
-
+		//cout << "done" << endl;
 		//calc new fitness
 		p.total_d = calc_city_dist(p.order);
 
@@ -318,40 +358,6 @@ double average_d(vector<double> v) {
 	return sum / v.size();
 }
 
-double calc_city_dist(vector<city> vcity) {
-	agent a;
-	a.agentX = 0;
-	a.agentY = 0;
-	double d = 0;
-	double total = 0;
-	for (int i = 0; i < vcity.size(); i++) {
-		a.new_agentX = vcity.at(i).cityX;
-		a.new_agentY = vcity.at(i).cityY;
-		double x = pow(a.new_agentX - a.agentX, 2);
-		double y = pow(a.new_agentY - a.agentY, 2);
-		d = sqrt(x + y);
-		total = total + d;
-	}
-	return total;
-}
-
-double calc_state_dist(vector<state> nation) {
-	agent a;
-	a.agentX = 0;
-	a.agentY = 0;
-	double d = 0;
-	double total = 0;
-	for (int i = 0; i < nation.size(); i++) {
-		a.new_agentX = nation.at(i).midx;
-		a.new_agentY = nation.at(i).midy;
-		double x = pow(a.new_agentX - a.agentX, 2);
-		double y = pow(a.new_agentY - a.agentY, 2);
-		d = sqrt(x + y);
-		total = total + d;
-	}
-	return total;
-}
-
 
 
 
@@ -367,7 +373,7 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 		county.init();
 		vstate.push_back(county);
 	}
-	assert(vstate.size() == num_state_policies);
+	assert(vstate.size() == num_states);
 	//states are currently cityless
 	
 	ofstream learn_curve_state;
@@ -407,7 +413,7 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 	for (int y = 0; y < state_generations; y++) {
 		vtemp1.clear();
 		//replicate, also mutates and evaluates
-		vsp = downselect_state(vsp);
+		vsp = replicate_state(vsp);
 		assert(vsp.size() == num_state_policies * 2);
 
 		//downselect
@@ -473,11 +479,16 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 	cout << "EA city optimization" << endl;
 	//EA for city optimization
 	for (int i = 0; i < city_generations; i++) {
+		cout << "gen " << i << endl;
 		vtemp2.clear();
+		
 		//replicate
+		//cout << "r";
 		vp = replicate_city(vp, num_states, vstate);
 		assert(vp.size() == num_city_policies * 2);
+	
 		//downselect
+		//cout << "d";
 		vp = downselect_city(vp);
 		assert(vp.size() == num_city_policies);
 
@@ -485,6 +496,7 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 			vtemp2.push_back(vp.at(j).total_d);
 		}
 		learn_curve_city << average_d(vtemp2) << endl;
+		//cout << "a";
 	}
 	learn_curve_city.close();
 }
