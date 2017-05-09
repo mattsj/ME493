@@ -222,6 +222,8 @@ double calc_city_dist(vector<city> vcity) {
 		double y = pow(a.new_agentY - a.agentY, 2);
 		d = sqrt(x + y);
 		total = total + d;
+		a.agentX = a.new_agentX;
+		a.agentY = a.new_agentY;
 	}
 	return total;
 }
@@ -239,6 +241,8 @@ double calc_state_dist(vector<state> nation) {
 		double y = pow(a.new_agentY - a.agentY, 2);
 		d = sqrt(x + y);
 		total = total + d;
+		a.agentX = a.new_agentX;
+		a.agentY = a.new_agentY;
 	}
 	return total;
 }
@@ -391,7 +395,7 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 		}
 
 		state_policy sp;
-		//guesses
+		//guess
 		for (int j = 0; j < num_states; j++) {
 			int a = pick_state(vstate);
 			vstate.at(a).state_visit = 1;//sets the state to have been visited
@@ -423,6 +427,7 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 		for (int i = 0; i < vsp.size(); i++) {
 			vtemp1.push_back(vsp.at(i).fitness);
 		}
+		
 		learn_curve_state << average_d(vtemp1) << endl;
 	}
 	//state path should now be optimized
@@ -479,7 +484,7 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 	cout << "EA city optimization" << endl;
 	//EA for city optimization
 	for (int i = 0; i < city_generations; i++) {
-		cout << "gen " << i << endl;
+		//cout << "gen " << i << endl;
 		vtemp2.clear();
 		
 		//replicate
@@ -499,6 +504,11 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 		//cout << "a";
 	}
 	learn_curve_city.close();
+	double count_chocula = 0;
+	for (int i = 0; i < vstate.size(); i++) {
+		count_chocula = count_chocula + vstate.at(i).num_cities;
+	}
+	cout << "total cities " << count_chocula << endl;
 }
 
 //city optimization the states
@@ -512,14 +522,13 @@ void down_up() {
 int main() {
 	srand(time(NULL));
 
-	//int num_cities = 100;
 	int num_states = 6;
 	int grid_min = 0;
 	int grid_max = 1000;
 	double xgap = grid_max / 4;
 	double ygap = grid_max / 3;
 	int num_city_policies = 100;
-	int num_state_policies = 100;
+	int num_state_policies = 50;
 	int state_generations = 100;
 	int city_generations = 200;
 
