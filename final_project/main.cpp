@@ -21,12 +21,8 @@ public:
 	double agentY;
 	double new_agentX;
 	double new_agentY;
-	double distance;
-	double total_distance;
 
 	void init();
-	void calc_d();
-
 };
 
 void agent::init() {
@@ -34,18 +30,6 @@ void agent::init() {
 	agentY = 0;
 }
 
-//calculates distance for every move and total distance agent has travelled
-void agent::calc_d() {
-	double calcX = 0;
-	double calcY = 0;
-	calcX = new_agentX - agentX;
-	calcY = new_agentY - agentY;
-	double total = pow(calcX, 2) + pow(calcY, 2);
-	distance = sqrt(total);
-	//cout << "distance = " << distance << endl;
-	total_distance = total_distance + distance;
-	//cout << "total d = " << total_distance << endl;
-}
 
 
 
@@ -59,12 +43,12 @@ public:
 	double cityY;
 	int visit; //if city has been unvisited = 0
 	int number;//city number 
-	void init(double min, double max);
+	void init(double xmin, double xmax, double ymin, double ymax);
 };
 
-void city::init(double min, double max) {
-	cityX = MJRAND*(max - min) + min;
-	cityY = MJRAND*(max - min) + min;
+void city::init(double xmin, double xmax, double ymin, double ymax) {
+	cityX = MJRAND*(xmax - xmin) + xmin;
+	cityY = MJRAND*(ymax - ymin) + ymin;
 
 	visit = 0;
 }
@@ -129,14 +113,19 @@ void state::init() {
 //contains order of cities selected and total distance 
 class policy {
 public:
-	vector<int> order;
+	vector<city> order;
 	double total_d;
 
-	void mutate();
+	void mutate(int num_states);
 };
 
-//swaps the order of two cities, can't swap the starting city
-void policy::mutate() {
+
+
+//swaps the order of two cities
+void policy::mutate(int num_states) {
+	int state = rand() % num_states;
+
+	//set limits for which cities can be mutated
 	int rand1 = rand() % order.size();
 	if (rand1 == 0) {
 		rand1 = rand1 + 1;
@@ -151,7 +140,7 @@ void policy::mutate() {
 			rand2 = rand2 + 1;
 		}
 	}
-	int temp;
+	city temp;
 	temp = order.at(rand1);
 	order.at(rand1) = order.at(rand2);
 	order.at(rand2) = temp;
@@ -218,68 +207,8 @@ int pick_state(vector<state> vstate) {
 	return t;
 }
 
-double movex(agent* pagent, vector<city> vcity, int picked_city) {
-	pagent->new_agentX = vcity.at(picked_city).cityX;
-	return pagent->new_agentX;
-}
-
-double movey(agent* pagent, vector<city> vcity, int picked_city) {
-	pagent->new_agentY = vcity.at(picked_city).cityY;
-	return pagent->new_agentY;
-}
-
-
-
-//only for mutating
-//calcs total distance for new city order
-double mutate_move(agent* pagent, policy p, vector<city> city_info, int start_city) {
-	//cout << "mutate move" << endl;
-	pagent->distance = 0;
-	pagent->total_distance = 0;
-	//cout << "size = " << p.order.size() << endl;
-	//for (int t = 0; t < p.order.size(); t++) {
-	//	cout << p.order.at(t) << "\t";
-	//}
-	//cout << endl;
-	int city1 = 0;//city agent is at
-	int city2 = 1;//city agent will travel to
-	int test = 0;
-	for (int i = 0; i < p.order.size() - 1; i++) {
-		int temp_loc1 = 0;
-		int temp_loc2 = 0;
-		for (int i = 0; i < city_info.size(); i++) {
-			if (p.order.at(city1) == city_info.at(i).number) {
-				temp_loc1 = i;
-			}
-			if (p.order.at(city2) == city_info.at(i).number) {
-				temp_loc2 = i;
-			}
-		}
-		city info1 = city_info.at(temp_loc1);
-		city info2 = city_info.at(temp_loc2);
-		pagent->agentX = info1.cityX;
-		pagent->agentY = info1.cityY;
-		pagent->new_agentX = info2.cityX;
-		pagent->new_agentY = info2.cityY;
-		//checks that the agent begins at the start city
-		while (test == 0) {
-			city start = city_info.at(start_city);
-			assert(pagent->agentX == start.cityX);
-			assert(pagent->agentY == start.cityY);
-			test = 10;
-		}
-		//cout << "x = " << pagent->agentX << " y= " << pagent->agentY << endl;
-		//cout << "newx = " << pagent->new_agentX << " newy =" << pagent->new_agentY << endl;
-		pagent->calc_d();
-		city1++;
-		city2++;
-	}
-	//cout << "done" << endl;
-	return pagent->total_distance;
-}
-
 //creates  copy of a policy and mutates
-vector<policy> replicate(vector<policy> vP, agent* pagent, vector<city> city_info, int start_city) {
+vector<policy> replicate_city(vector<policy> vP, int num_states) {
 	//cout << "replicate" << endl;
 	vector<policy> pop;//new vector of policies
 	pop = vP;
@@ -288,11 +217,11 @@ vector<policy> replicate(vector<policy> vP, agent* pagent, vector<city> city_inf
 		policy p;
 		p = pop.at(spot);
 		//cout << "mutate" << endl;
-		p.mutate();
-		//for (int i = 0; i < p.order.size(); i++) {
-		//	cout << p.order.at(i) << "\t";
-		//}
-		p.total_d = mutate_move(pagent, p, city_info, start_city);
+		p.mutate(num_states);
+
+		//calc new fitness
+		p.total_d = calc_city_dist(p.order);
+
 		pop.push_back(p);
 	}
 	assert(pop.size() == vP.size() * 2);
@@ -300,7 +229,7 @@ vector<policy> replicate(vector<policy> vP, agent* pagent, vector<city> city_inf
 }
 
 //reduces amount of policies to initial amount
-vector<policy> downselect(vector<policy> vP) {
+vector<policy> downselect_city(vector<policy> vP) {
 	//cout << "downselect" << endl;
 	//binary touranment
 	vector<policy> population;//new vector of policies
@@ -392,6 +321,23 @@ double average_d(vector<policy> vpolicy) {
 	return sum / vpolicy.size();
 }
 
+double calc_city_dist(vector<city> vcity) {
+	agent a;
+	a.agentX = 0;
+	a.agentY = 0;
+	double d = 0;
+	double total = 0;
+	for (int i = 0; i < vcity.size(); i++) {
+		a.new_agentX = vcity.at(i).cityX;
+		a.new_agentY = vcity.at(i).cityY;
+		double x = pow(a.new_agentX - a.agentX, 2);
+		double y = pow(a.new_agentY - a.agentY, 2);
+		d = sqrt(x + y);
+		total = total + d;
+	}
+	return d;
+}
+
 double calc_state_dist(vector<state> nation) {
 	agent a;
 	a.agentX = 0;
@@ -419,11 +365,12 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 	//creates all the states and places them in a vector of states for reference
 	for (int i = 0; i < num_states; i++) {
 		state county;
-		county.state_num = i;
+		county.state_num = i;//possibly have a problem
 		county.set_min_max(xgap,ygap);
 		county.init();
 		vstate.push_back(county);
 	}
+	assert(vstate.size() == num_state_policies);
 	//states are currently cityless
 
 	vector<state_policy> vsp;
@@ -443,6 +390,7 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 			sp.nation.push_back(vstate.at(a));
 		}
 		sp.fitness = calc_state_dist(sp.nation);//calcs fitness for the state policy
+		vsp.push_back(sp);
 	}
 
 
@@ -463,13 +411,14 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 	for (int i = 0; i < vstate.size(); i++) {
 		for (int j = 0; j < vstate.at(i).num_cities; j++) {
 			city town;
-			town.init();//fix
+			town.init(vstate.at(i).xcorner, vstate.at(i).xlimit, vstate.at(i).ycorner, vstate.at(i).ylimit);
 			town.number = j;
 			vstate.at(i).vcity.push_back(town);
 		}
 	}
 
 
+	vector<policy> vp;
 	//creates initial city policies
 	for (int i = 0; i < num_city_policies; i++) {
 		//reset agent and cities
@@ -483,16 +432,35 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 		policy p;
 		//guesses
 		//goes through each state and makes guess path for that state
+		for (int s = 0; s < vstate.size(); s++) {
+			for (int t = 0; t < vstate.at(s).num_cities; t++) {
+				int a = pick_city(vstate.at(s).vcity);
+				vstate.at(s).vcity.at(a).visit = 1;
+				p.order.push_back(vstate.at(s).vcity.at(a));
+			}
+		}
+
+		vp.push_back(p);
 	}
 
 
 	//EA for city optimization
+	for (int i = 0; i < city_generations; i++) {
+		//replicate
+
+
+		//downselect
+
+
+	}
 }
 
 //city optimization the states
 void down_up() {
 
 }
+
+
 
 
 int main() {
