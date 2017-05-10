@@ -362,27 +362,26 @@ double average_d(vector<double> v) {
 	return sum / v.size();
 }
 
+double calc_overall_d(state_policy sp, policy p) {
+	double total = 0;
+	for (int i = 0; i < sp.nation.size(); i++) {
+		for (int j = 0; j < sp.nation.at(i).vcity.size(); j++) {
+
+		}
+	}
+
+	return total;
+}
+
 
 
 
 //state optimization then cities
-void top_down(int num_states, double xgap, double ygap, int num_city_policies, int num_state_policies, int state_generations, int city_generations) {
+void top_down(int num_states, double xgap, double ygap, int num_city_policies, int num_state_policies, int state_generations, int city_generations, vector<state> vstate) {
 	agent smith;
-	vector<state> vstate;
-	//creates all the states and places them in a vector of states for reference
-	for (int i = 0; i < num_states; i++) {
-		state county;
-		county.state_num = i;//possibly have a problem
-		county.set_min_max(xgap,ygap);
-		county.init();
-		vstate.push_back(county);
-	}
-	assert(vstate.size() == num_states);
-	//states are currently cityless
 	
 	ofstream learn_curve_state;
-	learn_curve_state.open("learn_state.txt");
-
+	learn_curve_state.open("learn_state_td.txt");
 
 	cout << "creating inital state policies" << endl;
 	vector<state_policy> vsp;
@@ -433,21 +432,21 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 	//state path should now be optimized
 	learn_curve_state.close();
 
-
-
-	//creates the cities for each state
-	for (int i = 0; i < vstate.size(); i++) {
-		for (int j = 0; j < vstate.at(i).num_cities; j++) {
-			city town;
-			town.init(vstate.at(i).xcorner, vstate.at(i).xlimit, vstate.at(i).ycorner, vstate.at(i).ylimit);
-			town.number = j;
-			vstate.at(i).vcity.push_back(town);
+	//finds state policy with lowest fitness to calculate final overall total distance at the end
+	double temp1 = 0;
+	double loc1 = 0;
+	for (int i = 0; i < vsp.size(); i++) {
+		if (vsp.at(i).fitness >= temp1) {
+			temp1 = vsp.at(i).fitness;
+			loc1 = i;
 		}
+
 	}
 
 
+
 	ofstream learn_curve_city;
-	learn_curve_city.open("learn_city.txt");
+	learn_curve_city.open("learn_city_td.txt");
 	cout << "creating inital city policies" << endl;
 	vector<policy> vp;
 	vector<double> vtemp2;
@@ -504,6 +503,147 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 		//cout << "a";
 	}
 	learn_curve_city.close();
+
+	double temp2 = 0;
+	double loc2 = 0;
+	for (int i = 0; i < vp.size(); i++) {
+		if (vp.at(i).total_d >= temp2) {
+			temp2 = vp.at(i).total_d;
+			loc2 = i;
+		}
+
+	}
+
+	double count_chocula = 0;
+	for (int i = 0; i < vstate.size(); i++) {
+		count_chocula = count_chocula + vstate.at(i).num_cities;
+	}
+	cout << "total cities " << count_chocula << endl;
+
+	//calculate total distance visintg state and cities in order
+	double overall_total = calc_overall_d(vsp.at(temp1), vp.at(temp2));
+
+}
+
+
+//city optimization then states
+void down_up(int num_states, double xgap, double ygap, int num_city_policies, int num_state_policies, int state_generations, int city_generations, vector<state> vstate) {
+	agent smith;
+
+	ofstream learn_curve_city;
+	learn_curve_city.open("learn_city_du.txt");
+	cout << "creating inital city policies" << endl;
+	vector<policy> vp;
+	vector<double> vtemp1;
+
+	//creates initial city policies
+	for (int i = 0; i < num_city_policies; i++) {
+		//reset agent and cities
+		smith.init();
+		for (int j = 0; j < vstate.size(); j++) {
+			for (int k = 0; k < vstate.at(j).vcity.size(); k++) {
+				vstate.at(j).vcity.at(k).visit = 0;
+			}
+		}
+
+		policy p;
+		//guesses
+		//goes through each state and makes guess path for that state
+		for (int s = 0; s < vstate.size(); s++) {
+			for (int t = 0; t < vstate.at(s).num_cities; t++) {
+				int a = pick_city(vstate.at(s).vcity);
+				vstate.at(s).vcity.at(a).visit = 1;
+				p.order.push_back(vstate.at(s).vcity.at(a));
+			}
+		}
+		p.total_d = calc_city_dist(p.order);
+		vp.push_back(p);
+	}
+	for (int i = 0; i < vp.size(); i++) {
+		vtemp1.push_back(vp.at(i).total_d);
+	}
+	learn_curve_city << average_d(vtemp1) << endl;
+
+
+	cout << "EA city optimization" << endl;
+	//EA for city optimization
+	for (int i = 0; i < city_generations; i++) {
+		//cout << "gen " << i << endl;
+		vtemp1.clear();
+
+		//replicate
+		//cout << "r";
+		vp = replicate_city(vp, num_states, vstate);
+		assert(vp.size() == num_city_policies * 2);
+
+		//downselect
+		//cout << "d";
+		vp = downselect_city(vp);
+		assert(vp.size() == num_city_policies);
+
+		for (int j = 0; j < vp.size(); j++) {
+			vtemp1.push_back(vp.at(j).total_d);
+		}
+		learn_curve_city << average_d(vtemp1) << endl;
+		//cout << "a";
+	}
+	learn_curve_city.close();
+
+
+
+
+	ofstream learn_curve_state;
+	learn_curve_state.open("learn_state_du.txt");
+
+	cout << "creating inital state policies" << endl;
+	vector<state_policy> vsp;
+	//creates initial state policies
+	for (int i = 0; i < num_state_policies; i++) {
+		//reset agent and states
+		smith.init();
+		for (int z = 0; z < vstate.size(); z++) {
+			vstate.at(z).state_visit = 0;
+		}
+
+		state_policy sp;
+		//guess
+		for (int j = 0; j < num_states; j++) {
+			int a = pick_state(vstate);
+			vstate.at(a).state_visit = 1;//sets the state to have been visited
+			sp.nation.push_back(vstate.at(a));
+		}
+		sp.fitness = calc_state_dist(sp.nation);//calcs fitness for the state policy
+		vsp.push_back(sp);
+	}
+	vector<double> vtemp2;
+	for (int i = 0; i < vsp.size(); i++) {
+		vtemp2.push_back(vsp.at(i).fitness);
+	}
+	learn_curve_state << average_d(vtemp2) << endl;
+
+
+
+	cout << "EA state optimization" << endl;
+	//EA for state optimization 
+	for (int y = 0; y < state_generations; y++) {
+		vtemp2.clear();
+		//replicate, also mutates and evaluates
+		vsp = replicate_state(vsp);
+		assert(vsp.size() == num_state_policies * 2);
+
+		//downselect
+		vsp = downselect_state(vsp);
+		assert(vsp.size() == num_state_policies);
+
+		for (int i = 0; i < vsp.size(); i++) {
+			vtemp2.push_back(vsp.at(i).fitness);
+		}
+
+		learn_curve_state << average_d(vtemp2) << endl;
+	}
+	//state path should now be optimized
+	learn_curve_state.close();
+
 	double count_chocula = 0;
 	for (int i = 0; i < vstate.size(); i++) {
 		count_chocula = count_chocula + vstate.at(i).num_cities;
@@ -511,8 +651,7 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 	cout << "total cities " << count_chocula << endl;
 }
 
-//city optimization the states
-void down_up() {
+void break_program() {
 
 }
 
@@ -532,7 +671,33 @@ int main() {
 	int state_generations = 100;
 	int city_generations = 200;
 
-	top_down(num_states, xgap, ygap, num_city_policies, num_state_policies, state_generations, city_generations);
+
+	vector<state> vstate;
+	//creates all the states and places them in a vector of states for reference
+	for (int i = 0; i < num_states; i++) {
+		state county;
+		county.state_num = i;//possibly have a problem
+		county.set_min_max(xgap, ygap);
+		county.init();
+		vstate.push_back(county);
+	}
+	assert(vstate.size() == num_states);
+	//states are currently cityless
+
+
+	//creates the cities for each state
+	for (int i = 0; i < vstate.size(); i++) {
+		for (int j = 0; j < vstate.at(i).num_cities; j++) {
+			city town;
+			town.init(vstate.at(i).xcorner, vstate.at(i).xlimit, vstate.at(i).ycorner, vstate.at(i).ylimit);
+			town.number = j;
+			vstate.at(i).vcity.push_back(town);
+		}
+	}
+
+
+	top_down(num_states, xgap, ygap, num_city_policies, num_state_policies, state_generations, city_generations, vstate);
+	down_up(num_states, xgap, ygap, num_city_policies, num_state_policies, state_generations, city_generations, vstate);
 
 
 	return 0;
