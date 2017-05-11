@@ -558,7 +558,7 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 
 		policy p;
 		//guesses
-		//goes through each state and makes guess path for that state
+		//goes through each state and makes guess path for that city
 		for (int s = 0; s < vstate.size(); s++) {
 			for (int t = 0; t < vstate.at(s).num_cities; t++) {
 				int a = pick_city(vstate.at(s).vcity);
