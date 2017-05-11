@@ -114,8 +114,7 @@ void state::init() {
 	length = MJRAND*(length_max - length_min) + length_max;
 	xlimit = length + xcorner;
 	ylimit = length + ycorner;
-	//num_cities = rand() % 15 + 35;
-	num_cities = rand() % 5;
+	num_cities = rand() % 15 + 35;
 	midx = (length / 2) + xcorner;
 	midy = (length / 2) + ycorner;
 }
@@ -161,10 +160,13 @@ void policy::mutate(int num_states, vector<state> vstate) {
 	//set limits for which cities can be mutated based on the state picked
 	int rand1 = rand() % vstate.at(state).num_cities + t;
 	int rand2 = rand() % vstate.at(state).num_cities + t;
+	//cout << "rand1 " << rand1 << endl;
+	//cout<<"bbbbb";
 	while (rand1==rand2) {
 		rand2 = rand() % vstate.at(state).num_cities + t;
 		//cout << "rand2 " << rand2 << endl;
 	}
+	//cout << "aaaa";
 	//cout << "rand1 " << rand1<< "\t rand2 " << rand2 << endl;
 	city temp;
 	temp = order.at(rand1);
@@ -418,26 +420,30 @@ double average_d(vector<double> v) {
 	return sum / v.size();
 }
 
-double calc_overall_d(state_policy sp, policy p) {
+double calc_overall_d(state_policy sp, policy p, vector<state> original_state) {
 	//int count = 0;
 	agent a;
 	a.agentX = 0;
 	a.agentY = 0;
 	double total = 0;
-	int t = 0;//min
 	for (int i = 0; i < sp.nation.size(); i++) {
+		int temp = sp.nation.at(i).state_num;
+		int t = 0;//min
 		//cout << sp.nation.at(i).state_num;
 		//for the first state the min is 0
 		if (i == 0) {
 			t = 0;
 		}
 		else {
-			t = t + sp.nation.at(i-1).num_cities;
+			for (int z = 0; z < temp; z++) {
+				t = t + original_state.at(z).num_cities;
+			}
+			
 		}
-		cout <<"num cities "<<sp.nation.at(i).num_cities<< "\t t " << t << endl;
+		//cout <<"num cities "<<sp.nation.at(i).num_cities<< "\t t " << t << endl;
 		int c = 0;
 		for (int j = 0; j < sp.nation.at(i).num_cities; j++) {
-			cout << t + c << endl;
+			//cout << t + c << endl;
 			a.new_agentX = p.order.at(t+c).cityX;
 			a.new_agentY = p.order.at(t+c).cityY;
 			double x = pow(a.new_agentX - a.agentX, 2);
@@ -448,10 +454,10 @@ double calc_overall_d(state_policy sp, policy p) {
 			//count++;
 			c++;
 		}
-		cout << endl;
+		//cout << endl;
 	}
-	int y;
-	cin >> y;
+	/*int r;
+	cin >> r;*/
 	//cout << count << endl;
 
 	return total;
@@ -461,7 +467,7 @@ double calc_overall_d(state_policy sp, policy p) {
 
 
 //state optimization then cities
-void top_down(int num_states, double xgap, double ygap, int num_city_policies, int num_state_policies, int state_generations, int city_generations, vector<state> vstate) {
+void top_down(int num_states, double xgap, double ygap, int num_city_policies, int num_state_policies, int state_generations, int city_generations, vector<state> vstate, vector<state> original_state) {
 	agent smith;
 	
 	ofstream learn_curve_state;
@@ -606,16 +612,22 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 	vector<double> vtempx;
 	vector<double> vtempy;
 
-	double t = 0;
+	
 	for (int i = 0; i < vsp.at(loc1).nation.size(); i++) {
+		int temp = vsp.at(loc1).nation.at(i).state_num;
+		int t = 0;
 		if (i == 0) {
 			t = 0;
 		}
 		else {
-			t = t + vsp.at(loc1).nation.at(i - 1).num_cities;
+			for (int z = 0; z < temp; z++) {
+				t = t + original_state.at(z).num_cities;
+			}
 		}
 		int c = 0;
+		//cout << "aaaaa" << endl;
 		for (int j = 0; j < vsp.at(loc1).nation.at(i).num_cities; j++) {
+			//cout << "bbbbbb" << endl;
 			vtempx.push_back(vp.at(loc2).order.at(t + c).cityX);
 			vtempy.push_back(vp.at(loc2).order.at(t + c).cityY);
 			c++;
@@ -637,14 +649,14 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 	cout << "total cities " << count_chocula << endl;
 
 	//calculate total distance visintg state and cities in order
-	double overall_total = calc_overall_d(vsp.at(loc1), vp.at(loc2));
+	double overall_total = calc_overall_d(vsp.at(loc1), vp.at(loc2),original_state);
 	cout << "total overall distance " << overall_total << endl;
 
 }
 
 
 //city optimization then states
-void down_up(int num_states, double xgap, double ygap, int num_city_policies, int num_state_policies, int state_generations, int city_generations, vector<state> vstate) {
+void down_up(int num_states, double xgap, double ygap, int num_city_policies, int num_state_policies, int state_generations, int city_generations, vector<state> vstate, vector<state> original_state) {
 	agent smith;
 
 	ofstream learn_curve_city;
@@ -789,7 +801,7 @@ void down_up(int num_states, double xgap, double ygap, int num_city_policies, in
 	cout << "total cities " << count_chocula << endl;
 
 	//calculate total distance visintg state and cities in order
-	double overall_total = calc_overall_d(vsp.at(loc1), vp.at(loc2));
+	double overall_total = calc_overall_d(vsp.at(loc1), vp.at(loc2),original_state);
 	cout << "total overall distance " << overall_total << endl;
 
 
@@ -918,6 +930,7 @@ int main() {
 		vstate.push_back(county);
 	}
 	assert(vstate.size() == num_states);
+	vector<state> original_state = vstate;
 	//states are currently cityless
 
 	vector<city> vcity;//jsut for gamma
@@ -943,9 +956,9 @@ int main() {
 	}
 
 	cout << "TD" << endl;
-	top_down(num_states, xgap, ygap, num_city_policies, num_state_policies, state_generations, city_generations, vstate);
+	top_down(num_states, xgap, ygap, num_city_policies, num_state_policies, state_generations, city_generations, vstate, original_state);
 	cout << "DU" << endl;
-	down_up(num_states, xgap, ygap, num_city_policies, num_state_policies, state_generations, city_generations, vstate);
+	down_up(num_states, xgap, ygap, num_city_policies, num_state_policies, state_generations, city_generations, vstate, original_state);
 	cout << "GAMMA" << endl;
 	gamma(vcity, num_city_policies, city_generations);
 
