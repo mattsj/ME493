@@ -808,10 +808,28 @@ void down_up(int num_states, double xgap, double ygap, int num_city_policies, in
 	vector<double> vtempx;
 	vector<double> vtempy;
 
-	for (int i = 0; i < vp.at(loc2).order.size(); i++) {
-		vtempx.push_back(vp.at(loc2).order.at(i).cityX);
-		vtempy.push_back(vp.at(loc2).order.at(i).cityY);
+
+	for (int i = 0; i < vsp.at(loc1).nation.size(); i++) {
+		int temp = vsp.at(loc1).nation.at(i).state_num;
+		int t = 0;
+		if (i == 0) {
+			t = 0;
+		}
+		else {
+			for (int z = 0; z < temp; z++) {
+				t = t + original_state.at(z).num_cities;
+			}
+		}
+		int c = 0;
+		//cout << "aaaaa" << endl;
+		for (int j = 0; j < vsp.at(loc1).nation.at(i).num_cities; j++) {
+			//cout << "bbbbbb" << endl;
+			vtempx.push_back(vp.at(loc2).order.at(t + c).cityX);
+			vtempy.push_back(vp.at(loc2).order.at(t + c).cityY);
+			c++;
+		}
 	}
+
 	ofstream path_du;
 	path_du.open("path_du.txt");
 	for (int i = 0; i < vtempx.size(); i++) {
