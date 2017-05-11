@@ -1,3 +1,9 @@
+//Matthew Jew, Alton Ta
+//ME 493
+//Final Project
+
+
+
 #include <iostream>
 #include <assert.h>
 #include <random>
@@ -423,8 +429,7 @@ double average_d(vector<double> v) {
 double calc_overall_d(state_policy sp, policy p, vector<state> original_state) {
 	//int count = 0;
 	agent a;
-	a.agentX = 0;
-	a.agentY = 0;
+	a.init();
 	double total = 0;
 	for (int i = 0; i < sp.nation.size(); i++) {
 		int temp = sp.nation.at(i).state_num;
@@ -532,11 +537,6 @@ void top_down(int num_states, double xgap, double ygap, int num_city_policies, i
 		}
 
 	}
-
-	for (int i = 0; i < vsp.at(loc1).nation.size(); i++) {
-		cout << vsp.at(loc1).nation.at(i).state_num;
-	}
-	cout << endl;
 
 
 
